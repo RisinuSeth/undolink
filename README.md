@@ -12,7 +12,7 @@ Temporary links that stop redirecting when their time is up.
 - Optional custom slugs using 4–24 lowercase letters, numbers and hyphens.
 - Optional password protection using PBKDF2-SHA-256 password hashes and per-link password-attempt limits.
 - Optional click limits, including one-time links.
-- Disable or permanently delete a link using its private management key.
+- Disable, permanently delete or extend a link by 24 hours using its private management key.
 - Private click analytics: total clicks, click-limit status and the 10 most recent click timestamps.
 - QR code generation and PNG download for created links.
 - Only HTTP and HTTPS destinations are accepted; embedded URL credentials are rejected.
