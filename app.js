@@ -32,6 +32,25 @@ const toast=document.querySelector("#toast");
 const STORAGE_KEY="undolink.links.v1";
 let activeLink=null;
 
+const accountButton=document.querySelector("#account-button");
+const accountLabel=document.querySelector("#account-label");
+const accountModal=document.querySelector("#account-modal");
+const accountBackdrop=document.querySelector("#account-backdrop");
+const accountClose=document.querySelector("#account-close");
+const accountForm=document.querySelector("#account-form");
+const accountEmail=document.querySelector("#account-email");
+const accountPassword=document.querySelector("#account-password");
+const accountSubmit=document.querySelector("#account-submit");
+const accountMessage=document.querySelector("#account-message");
+const accountSwitch=document.querySelector("#account-switch");
+const accountSwitchLabel=document.querySelector("#account-switch-label");
+const accountTitle=document.querySelector("#account-title");
+const accountCopy=document.querySelector("#account-copy");
+let currentUser=null;
+let accountMode="login";
+let accountItems=[];
+
+
 function notify(text){
   toast.textContent=text;
   toast.classList.add("show");
@@ -77,7 +96,14 @@ function linkStatus(item){
   return "active";
 }
 function renderRecent(){
-  const items=readLinks();
+  const localItems=readLinks();
+  const bySlug=new Map();
+  for(const item of localItems)bySlug.set(item.slug,item);
+  for(const item of accountItems){
+    const local=bySlug.get(item.slug)||{};
+    bySlug.set(item.slug,{...local,...item,manageKey:local.manageKey||null});
+  }
+  const items=[...bySlug.values()];
   recentSection.hidden=!items.length;
   recentList.replaceChildren();
   const counts={active:0,scheduled:0,paused:0,expired:0,disabled:0};
@@ -336,6 +362,97 @@ async function createBulkLinks(){
     bulkCreate.querySelector("span").textContent="Create links";
   }
 }
+
+function openAccountModal(mode="login"){
+  accountMode=mode;
+  accountMessage.textContent="";
+  accountModal.hidden=false;
+  updateAccountMode();
+  accountEmail.focus();
+}
+function closeAccountModal(){accountModal.hidden=true}
+function updateAccountMode(){
+  const signup=accountMode==="signup";
+  accountTitle.textContent=signup?"Create your account.":"Welcome back.";
+  accountCopy.textContent=signup?"Save your links and manage them from any device.":"Log in to access your saved links on any device.";
+  accountSubmit.querySelector("span").textContent=signup?"Create account":"Log in";
+  accountPassword.autocomplete=signup?"new-password":"current-password";
+  accountSwitchLabel.textContent=signup?"Already have an account?":"New to UndoLink?";
+  accountSwitch.textContent=signup?"Log in":"Create an account";
+}
+async function syncAccountLinks(){
+  if(!currentUser){accountItems=[];renderRecent();return}
+  const local=readLinks();
+  for(const item of local){
+    if(!item.manageKey)continue;
+    try{
+      await fetch("/api/account/claim",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slug:item.slug,manageKey:item.manageKey})});
+    }catch{}
+  }
+  const response=await fetch("/api/account/links");
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error||"Couldn't load saved links.");
+  accountItems=(data.links||[]).map(item=>{
+    const saved=local.find(link=>link.slug===item.slug);
+    return {...item,manageKey:saved?.manageKey||null};
+  });
+  renderRecent();
+}
+async function refreshAccount(){
+  const response=await fetch("/api/auth/me");
+  const data=await response.json();
+  currentUser=data.user||null;
+  accountButton.textContent=currentUser?"Log out":"Log in";
+  accountLabel.textContent=currentUser?currentUser.email:"Guest mode";
+  if(currentUser)await syncAccountLinks();
+  else{accountItems=[];renderRecent()}
+}
+accountButton.addEventListener("click",async()=>{
+  if(!currentUser){openAccountModal("login");return}
+  if(!confirm("Log out of your UndoLink account?"))return;
+  try{
+    await fetch("/api/auth/logout",{method:"POST"});
+    currentUser=null;
+    accountItems=[];
+    accountButton.textContent="Log in";
+    accountLabel.textContent="Guest mode";
+    renderRecent();
+    notify("Logged out");
+  }catch{notify("Couldn't log out. Please try again.")}
+});
+accountForm.addEventListener("submit",async event=>{
+  event.preventDefault();
+  accountMessage.textContent="";
+  const email=accountEmail.value.trim();
+  const password=accountPassword.value;
+  if(password.length<10){accountMessage.textContent="Use a password with at least 10 characters.";return}
+  accountSubmit.disabled=true;
+  accountSubmit.querySelector("span").textContent=accountMode==="signup"?"Creating…":"Logging in…";
+  try{
+    const response=await fetch("/api/auth/"+accountMode,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||"Authentication failed.");
+    currentUser=data.user;
+    accountModal.hidden=true;
+    accountPassword.value="";
+    accountButton.textContent="Log out";
+    accountLabel.textContent=currentUser.email;
+    await syncAccountLinks();
+    notify(accountMode==="signup"?"Account created":"Welcome back");
+  }catch(error){accountMessage.textContent=error.message||"Please try again."}
+  finally{accountSubmit.disabled=false;updateAccountMode()}
+});
+accountSwitch.addEventListener("click",()=>{
+  accountMode=accountMode==="login"?"signup":"login";
+  accountMessage.textContent="";
+  updateAccountMode();
+});
+accountClose.addEventListener("click",closeAccountModal);
+accountBackdrop.addEventListener("click",closeAccountModal);
+document.addEventListener("keydown",event=>{
+  if(event.key==="Escape"&&!accountModal.hidden)closeAccountModal();
+});
+
 form.addEventListener("submit",async event=>{
   event.preventDefault();
   message.textContent="";
@@ -441,3 +558,4 @@ linkFilter.addEventListener("change",renderRecent);
 linkSort.addEventListener("change",renderRecent);
 bulkCreate.addEventListener("click",createBulkLinks);
 renderRecent();
+refreshAccount().catch(()=>notify("Account status couldn’t be loaded."));
