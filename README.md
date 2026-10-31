@@ -9,6 +9,7 @@ Temporary links that stop redirecting when their time is up.
 
 ## Current functionality
 - Create short redirects with fixed expiry options: 15 minutes, 1 hour, 24 hours, 7 days or 30 days.
+- Optional custom slugs using 4–24 lowercase letters, numbers and hyphens.
 - Optional click limits, including one-time links.
 - Disable or permanently delete a link using its private management key.
 - Private click analytics: total clicks, click-limit status and the 10 most recent click timestamps.
