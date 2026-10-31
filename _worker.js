@@ -198,7 +198,7 @@ async function auth(request, env, action) {
     const user = await env.DB.prepare("SELECT id,email FROM users WHERE email=? COLLATE NOCASE").bind(email).first();
     if (user) {
       try { await issueEmailAction(env, user.id, user.email, "reset_password", request); }
-      catch { return json({ error: "Password recovery email is temporarily unavailable. Please try again later." }, 503); }
+      catch { /* Keep the response identical to avoid revealing whether an account exists. */ }
     }
     return json({ ok: true, message: "If an account exists for that address, a password reset email is on its way." });
   }
