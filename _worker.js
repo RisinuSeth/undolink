@@ -194,7 +194,7 @@ async function auth(request, env, action) {
     let body;
     try { body = await request.json(); } catch { return json({ error: "Enter a valid email address." }, 400); }
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-    if (!/^[^\s@]{1,64}@[a-zA-Z0-9-]{1,190}(?:\.[a-zA-Z0-9-]{2,30})+$/.test(email)) return json({ error: "Enter a valid email address." }, 400);
+    if (!/^[^\s@]{1,64}@[a-z0-9-]{1,190}(?:\.[a-z0-9-]{2,30})+$/.test(email)) return json({ error: "Enter a valid email address." }, 400);
     const user = await env.DB.prepare("SELECT id,email FROM users WHERE email=? COLLATE NOCASE").bind(email).first();
     if (user) {
       try { await issueEmailAction(env, user.id, user.email, "reset_password", request); }
