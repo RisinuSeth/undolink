@@ -79,6 +79,12 @@ async function createLink(request, env) {
   if (maxClicks !== null && !clickChoices.has(maxClicks)) {
     return json({ error: "Choose a valid click limit." }, 400);
   }
+  const password = typeof body.password === "string" ? body.password : "";
+  if (password && (password.length < 6 || password.length > 64)) {
+    return json({ error: "A link password must be between 6 and 64 characters." }, 400);
+  }
+  const passwordSalt = password ? token(16) : null;
+  const passwordHash = password ? await hashPassword(password, passwordSalt) : null;
 
   const ip = request.headers.get("CF-Connecting-IP") || "unknown";
   const ipHash = await digest(ip);
