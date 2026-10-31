@@ -381,22 +381,35 @@ async function createBulkLinks(){
   }
 }
 
+
 function openAccountModal(mode="login"){
   accountMode=mode;
   accountMessage.textContent="";
+  accountResend.hidden=true;
   accountModal.hidden=false;
   updateAccountMode();
-  accountEmail.focus();
+  if(mode!=="reset")accountEmail.focus();
+  else accountPassword.focus();
 }
 function closeAccountModal(){accountModal.hidden=true}
 function updateAccountMode(){
   const signup=accountMode==="signup";
-  accountTitle.textContent=signup?"Create your account.":"Welcome back.";
-  accountCopy.textContent=signup?"Save your links and manage them from any device.":"Log in to access your saved links on any device.";
-  accountSubmit.querySelector("span").textContent=signup?"Create account":"Log in";
-  accountPassword.autocomplete=signup?"new-password":"current-password";
+  const forgot=accountMode==="forgot";
+  const reset=accountMode==="reset";
+  const login=accountMode==="login";
+  accountTitle.textContent=signup?"Create your account.":forgot?"Reset your password.":reset?"Choose a new password.":"Welcome back.";
+  accountCopy.textContent=signup?"Verify your email to activate your account.":forgot?"Enter your email and we'll send a secure reset link if an account exists.":reset?"Choose a new password for your UndoLink account.":"Log in to access your saved links on any device.";
+  accountEmail.hidden=reset;
+  accountPassword.hidden=forgot;
+  accountPasswordLabel.hidden=forgot;
+  accountPasswordLabel.textContent=reset?"New password":"Password";
+  accountSubmit.querySelector("span").textContent=signup?"Create account":forgot?"Send reset link":reset?"Reset password":"Log in";
+  accountPassword.autocomplete=signup||reset?"new-password":"current-password";
+  accountSwitchRow.hidden=forgot||reset;
   accountSwitchLabel.textContent=signup?"Already have an account?":"New to UndoLink?";
   accountSwitch.textContent=signup?"Log in":"Create an account";
+  accountForgot.hidden=!login;
+  if(!signup)accountResend.hidden=true;
 }
 async function syncAccountLinks(){
   if(!currentUser){accountItems=[];renderRecent();return}
