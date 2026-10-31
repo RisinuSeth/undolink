@@ -4,7 +4,7 @@
 **Service:** UndoLink (https://undolink.pages.dev)  
 **Operator:** Independently operated by an individual (not presented as a registered company).
 
-> **Review note:** This is a working draft based on the current application code. It is not legal advice and is not ready to be treated as a final legal policy. The operator should confirm the details and obtain qualified local advice where appropriate before publishing it.
+> **Review note:** This policy describes the current application based on a code review. It is not legal advice or a guarantee of compliance. The operator should obtain qualified local advice when feasible.
 
 ## 1. About this policy
 
@@ -114,4 +114,4 @@ You can also contact the operator through **undolink.support@gmail.com**.
 
 ---
 
-**Items to confirm before publication:** the operator's legal name and the appropriate way to disclose it; the applicable governing jurisdiction; provider retention and international-transfer details; whether account deletion requests can be reliably fulfilled; and whether the policy needs additional notices under the laws that apply to the operator and users.
+**Ongoing review items:** confirm any legally required operator-identification details; verify provider retention and international-transfer details; keep account-deletion handling accurate; and review any additional notices required by laws applying to the operator and users.
