@@ -4,11 +4,11 @@
 **Service:** UndoLink (https://undolink.pages.dev)  
 **Operator:** Independently operated by an individual (not presented as a registered company).
 
-> **Review note:** This is a working draft based on the current service. It is not legal advice and is not ready to be treated as a final legal agreement. The operator should confirm the details and obtain qualified local advice where appropriate before publishing it.
+> **Review note:** This text has been aligned with the current application and is published as the service's working Terms. It is not legal advice or a guarantee of compliance. The operator should obtain qualified local advice when feasible.
 
 ## 1. Using UndoLink
 
-UndoLink lets you create and manage temporary redirect links. By accessing or using the service, you agree to follow these terms and applicable laws.
+UndoLink lets you create and manage temporary redirect links. By accessing or using the service, you agree to follow these terms and applicable laws. New account registrations require explicit acceptance of the current Terms of Service before the account can be created.
 
 UndoLink is independently operated by an individual and is not being presented as a company or incorporated entity.
 
@@ -62,11 +62,11 @@ UndoLink does not own or control the destination websites selected by users. We 
 
 We aim to keep UndoLink available and functioning, but we do not guarantee uninterrupted access, error-free operation, or permanent storage of link information. Maintenance, technical problems, provider outages, security measures, or other circumstances may affect the service.
 
-We may restrict, disable, or remove links or accounts that appear to violate these terms, threaten the service, or create legal or security risks. Where appropriate and practical, we may try to provide notice, but we cannot promise advance notice in every situation.
+We may disable or remove links that appear to violate these terms, threaten the service, or create legal or security risks. We may also restrict access to UndoLink where reasonably necessary to address abuse, security threats, or legal requirements, to the extent those controls are available to us. Where appropriate and practical, we may try to provide notice, but we cannot promise advance notice in every situation.
 
 ## 8. Intellectual property
 
-UndoLink's name, branding, website design, and software are owned by or used by the service operator, except for third-party materials and open-source components, which remain subject to their respective rights and licenses.
+Original UndoLink branding, website design, and software created for the service are claimed by the independent operator to the extent the operator holds the relevant rights. Third-party materials and open-source components remain subject to their respective owners' rights and licenses.
 
 You retain responsibility for the content and destination URLs you submit. You grant the service the limited permission needed to store, process, and display that information to provide the link-management features you request.
 
@@ -100,4 +100,4 @@ You can also contact the operator through **undolink.support@gmail.com**.
 
 ---
 
-**Items to confirm before publication:** the operator's legal name and the appropriate way to disclose it; governing law and dispute process; enforceability of warranty and liability language; suspension/termination procedures; and any consumer-protection obligations that apply.
+**Ongoing review items:** confirm the operator-identification details and any required disclosures; obtain local review of governing-law, dispute, warranty, liability, and consumer-protection wording; and keep these terms aligned with future product changes.
