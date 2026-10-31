@@ -106,6 +106,23 @@ async function manage(request, env, slug) {
     return json({ error: "This management key is invalid." }, 401);
   }
 
+  if (request.method === "GET") {
+    const link = await env.DB.prepare(
+      "SELECT id, clicks, max_clicks, expires_at, disabled_at FROM links WHERE slug=?"
+    ).bind(slug).first();
+    if (!link) return json({ error: "Link not found." }, 404);
+    const recent = await env.DB.prepare(
+      "SELECT clicked_at FROM link_clicks WHERE link_id=? ORDER BY clicked_at DESC LIMIT 10"
+    ).bind(link.id).all();
+    return json({
+      clicks: link.clicks,
+      maxClicks: link.max_clicks,
+      expiresAt: link.expires_at * 1000,
+      disabled: link.disabled_at !== null,
+      recentClicks: (recent.results || []).map(item => item.clicked_at * 1000)
+    });
+  }
+
   if (request.method === "PATCH") {
     let body;
     try { body = await request.json(); } catch { return json({ error: "Invalid request." }, 400); }
@@ -132,7 +149,7 @@ export default {
     }
 
     const managementMatch = url.pathname.match(/^\/api\/links\/([a-f0-9]{8}(?:[a-f0-9]{2})?)$/);
-    if (managementMatch && (request.method === "PATCH" || request.method === "DELETE")) {
+    if (managementMatch && (request.method === "GET" || request.method === "PATCH" || request.method === "DELETE")) {
       try { return await manage(request, env, managementMatch[1]); }
       catch { return json({ error: "We couldn't update that link. Please try again." }, 500); }
     }
@@ -142,9 +159,15 @@ export default {
       const now = Math.floor(Date.now() / 1000);
       try {
         const row = await env.DB.prepare(
-          "UPDATE links SET clicks=clicks+1 WHERE slug=? AND disabled_at IS NULL AND expires_at>? AND (max_clicks IS NULL OR clicks<max_clicks) RETURNING destination_url"
+          "UPDATE links SET clicks=clicks+1 WHERE slug=? AND disabled_at IS NULL AND expires_at>? AND (max_clicks IS NULL OR clicks<max_clicks) RETURNING id, destination_url"
         ).bind(slug, now).first();
         if (!row) return page("This link has expired", "The UndoLink redirect is no longer active. The original destination hasn't been changed.");
+        try {
+          await env.DB.prepare("INSERT INTO link_clicks (link_id, clicked_at) VALUES (?,?)")
+            .bind(row.id, now).run();
+        } catch {
+          // A click should still reach its destination if analytics logging is temporarily unavailable.
+        }
         return new Response(null, {
           status: 302,
           headers: { ...securityHeaders, "location": row.destination_url, "cache-control": "no-store" }
