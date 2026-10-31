@@ -24,7 +24,7 @@ const token = (bytes = 32) => {
 const fromHex = value => Uint8Array.from(value.match(/.{2}/g).map(part => parseInt(part, 16)));
 const hashPassword = async (password, saltHex) => {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt: fromHex(saltHex), iterations: 120000, hash: "SHA-256" }, key, 256);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt: fromHex(saltHex), iterations: 100000, hash: "SHA-256" }, key, 256);
   return [...new Uint8Array(bits)].map(value => value.toString(16).padStart(2, "0")).join("");
 };
 const digest = async value => {
@@ -41,7 +41,7 @@ const authCookieName = "undolink_session";
 const sessionLifetime = 30 * 24 * 60 * 60;
 const hashAuthPassword = async (password, saltHex) => {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt: fromHex(saltHex), iterations: 210000, hash: "SHA-256" }, key, 256);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt: fromHex(saltHex), iterations: 100000, hash: "SHA-256" }, key, 256);
   return [...new Uint8Array(bits)].map(value => value.toString(16).padStart(2, "0")).join("");
 };
 const cookieValue = (request, name) => {
