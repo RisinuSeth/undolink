@@ -104,9 +104,44 @@
       <div><span class="step-number">03</span><strong>Share and forget</strong><p>UndoLink handles the deadline.</p></div>
     </section>
 
+    <section class="bulk-section" aria-label="Bulk link creation">
+      <div class="section-heading"><h2>Create in bulk</h2><span>Up to 10 links at once</span></div>
+      <p class="bulk-intro">Paste one destination URL per line. Each link gets its own expiry and management key.</p>
+      <textarea id="bulk-urls" rows="5" placeholder="https://example.com/page-one&#10;https://example.com/page-two"></textarea>
+      <div class="bulk-controls">
+        <label class="field-label" for="bulk-expiry">Expiry for all links</label>
+        <select id="bulk-expiry">
+          <option value="3600">1 hour</option>
+          <option value="86400" selected>24 hours</option>
+          <option value="604800">7 days</option>
+        </select>
+        <button id="bulk-create" class="create-button" type="button"><span>Create links</span><span aria-hidden="true">↗</span></button>
+      </div>
+      <p id="bulk-message" class="form-message" role="status" aria-live="polite"></p>
+      <div id="bulk-results" class="bulk-results" hidden></div>
+    </section>
+
     <section class="recent-section" id="recent-section" hidden>
       <div class="section-heading"><h2>Your links</h2><span>Saved on this device</span></div>
+      <div class="dashboard-summary" id="dashboard-summary"></div>
+      <div class="dashboard-tools">
+        <input id="link-search" type="search" placeholder="Search your links" aria-label="Search your links">
+        <select id="link-filter" aria-label="Filter links">
+          <option value="all">All links</option>
+          <option value="active">Active</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="paused">Paused</option>
+          <option value="expired">Expired</option>
+          <option value="disabled">Disabled</option>
+        </select>
+        <select id="link-sort" aria-label="Sort links">
+          <option value="newest">Newest first</option>
+          <option value="expiry">Expiring soon</option>
+          <option value="oldest">Oldest first</option>
+        </select>
+      </div>
       <div id="recent-list" class="recent-list"></div>
+      <p id="dashboard-empty" class="dashboard-empty" hidden>No links match this view.</p>
     </section>
 
     <footer><span>UndoLink</span><span>Once a link expires, its UndoLink redirect stops working. The original destination is not deleted or changed.</span></footer>
