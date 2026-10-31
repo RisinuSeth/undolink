@@ -253,7 +253,7 @@ async function auth(request, env, action) {
   if (!row) return json({ error: "Email or password is incorrect." }, 401);
   const candidate = await hashAuthPassword(password, row.password_salt);
   if (candidate !== row.password_hash) return json({ error: "Email or password is incorrect." }, 401);
-  if (!row.email_verified_at) return json({ error: "Verify your email before logging in. Use the resend verification option after signing in is enabled." }, 403);
+  if (!row.email_verified_at) return json({ error: "Verify your email first. Enter your password and use the resend verification option below." }, 403);
   user = { id: row.id, email: row.email };
   const cookie = await createSession(user.id, env);
   return new Response(JSON.stringify({ user: publicUser(user) }), {
