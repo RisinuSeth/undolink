@@ -10,6 +10,10 @@ const result=document.querySelector("#result");
 const shortLink=document.querySelector("#short-link");
 const expiryNote=document.querySelector("#expiry-note");
 const copyButton=document.querySelector("#copy-button");
+const qrButton=document.querySelector("#qr-button");
+const qrDownload=document.querySelector("#qr-download");
+const qrPanel=document.querySelector("#qr-panel");
+const qrCanvas=document.querySelector("#qr-canvas");
 const recentSection=document.querySelector("#recent-section");
 const recentList=document.querySelector("#recent-list");
 const toast=document.querySelector("#toast");
@@ -228,4 +232,28 @@ form.addEventListener("submit",async event=>{
   }
 });
 copyButton.addEventListener("click",()=>activeLink&&copy(activeLink.url));
+qrButton.addEventListener("click",()=>{
+  if(!activeLink)return;
+  if(qrPanel.hidden){
+    if(!window.QRCode){notify("QR code generator isn't available right now.");return}
+    QRCode.toCanvas(qrCanvas,activeLink.url,{width:200,margin:2,color:{dark:"#252525",light:"#ffffff"}},error=>{
+      if(error){notify("Couldn't generate the QR code.");return}
+      qrPanel.hidden=false;
+      qrDownload.hidden=false;
+      qrButton.textContent="Hide QR code";
+    });
+  }else{
+    qrPanel.hidden=true;
+    qrDownload.hidden=true;
+    qrButton.textContent="Show QR code";
+  }
+});
+qrDownload.addEventListener("click",()=>{
+  try{
+    const link=document.createElement("a");
+    link.download="undolink-qr.png";
+    link.href=qrCanvas.toDataURL("image/png");
+    link.click();
+  }catch{notify("Couldn't download the QR code.")}
+});
 renderRecent();
