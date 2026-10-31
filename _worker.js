@@ -71,7 +71,7 @@ async function createSession(userId, env) {
 function publicUser(user) {
   return { id: user.id, email: user.email };
 }
-async function authRateLimited(request, env, action) {
+async function authRateLimited(request, env, action, maxCount = 15) {
   const now = Math.floor(Date.now() / 1000);
   const ip = request.headers.get("CF-Connecting-IP") || "unknown";
   const ipHash = await digest(ip);
@@ -80,7 +80,72 @@ async function authRateLimited(request, env, action) {
     "INSERT INTO auth_rate_limits (ip_hash,action,window_start,count) VALUES (?,?,?,1) " +
     "ON CONFLICT(ip_hash,action,window_start) DO UPDATE SET count=count+1 RETURNING count"
   ).bind(ipHash, action, windowStart).first();
-  return Number(row?.count || 0) > 15;
+  return Number(row?.count || 0) > maxCount;
+}
+
+
+async function submitSupportRequest(request, env) {
+  if (await authRateLimited(request, env, "support", 5)) {
+    return json({ error: "Too many messages. Please try again later." }, 429);
+  }
+
+  const origin = request.headers.get("Origin");
+  if (origin && origin !== new URL(request.url).origin) {
+    return json({ error: "Invalid request origin." }, 403);
+  }
+
+  const contentLength = Number(request.headers.get("content-length") || 0);
+  if (contentLength > 7000) return json({ error: "That message is too large." }, 413);
+
+  let body;
+  try {
+    const raw = await request.text();
+    if (raw.length > 7000) return json({ error: "That message is too large." }, 413);
+    body = JSON.parse(raw);
+  } catch {
+    return json({ error: "Please complete the form and try again." }, 400);
+  }
+
+  if (typeof body.company === "string" && body.company.trim()) {
+    return json({ ok: true });
+  }
+
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const email = typeof body.email === "string" ? body.email.trim() : "";
+  const subject = typeof body.subject === "string" ? body.subject.trim() : "";
+  const message = typeof body.message === "string" ? body.message.trim() : "";
+
+  if (name.length > 100 || email.length > 254 || subject.length < 3 || subject.length > 150 ||
+      message.length < 10 || message.length > 5000 ||
+      !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+    return json({ error: "Check your email, subject and message, then try again." }, 400);
+  }
+
+  if (!env.SUPPORT_WEBHOOK_URL || !env.SUPPORT_WEBHOOK_SECRET) {
+    return json({ error: "Support messages are temporarily unavailable. Please try again later." }, 503);
+  }
+
+  try {
+    const response = await fetch(env.SUPPORT_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        secret: env.SUPPORT_WEBHOOK_SECRET,
+        name: name || "Not provided",
+        email,
+        subject,
+        message
+      }),
+      redirect: "follow"
+    });
+    const result = await response.json();
+    if (!response.ok || result?.ok !== true) {
+      return json({ error: "We couldn't send your message. Please try again later." }, 502);
+    }
+    return json({ ok: true, message: "Your message has been sent. We'll reply by email." });
+  } catch {
+    return json({ error: "We couldn't send your message. Please try again later." }, 502);
+  }
 }
 
 function escapeEmailHtml(value) {
@@ -601,6 +666,11 @@ export default {
       catch { return json({ error: "We couldn't load your account links." }, 503); }
     }
 
+    if (url.pathname === "/api/support" && request.method === "POST") {
+      try { return await submitSupportRequest(request, env); }
+      catch { return json({ error: "Support is temporarily unavailable. Please try again later." }, 503); }
+    }
+
     if (url.pathname === "/api/links" && request.method === "POST") {
       try { return await createLink(request, env); }
       catch { return json({ error: "We couldn't create that link. Please try again." }, 500); }
@@ -616,6 +686,10 @@ export default {
     if (managementMatch && (request.method === "GET" || request.method === "PATCH" || request.method === "DELETE")) {
       try { return await manage(request, env, managementMatch[1]); }
       catch { return json({ error: "We couldn't update that link. Please try again." }, 500); }
+    }
+
+    if (url.pathname === "/support" && request.method === "GET") {
+      return env.ASSETS.fetch(new Request(new URL("/support.html", url), request));
     }
 
     if (request.method === "GET" && slugPattern.test(url.pathname.slice(1)) && url.pathname.length > 1 && !url.pathname.slice(1).includes("/")) {
