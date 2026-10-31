@@ -429,12 +429,14 @@ async function syncAccountLinks(){
   });
   renderRecent();
 }
+
 async function refreshAccount(){
   const response=await fetch("/api/auth/me");
   const data=await response.json();
   currentUser=data.user||null;
   accountButton.textContent=currentUser?"Log out":"Log in";
   accountLabel.textContent=currentUser?currentUser.email:"Guest mode";
+  settingsButton.hidden=!currentUser;
   if(currentUser)await syncAccountLinks();
   else{accountItems=[];renderRecent()}
 }
@@ -447,6 +449,7 @@ accountButton.addEventListener("click",async()=>{
     accountItems=[];
     accountButton.textContent="Log in";
     accountLabel.textContent="Guest mode";
+    settingsButton.hidden=true;
     renderRecent();
     notify("Logged out");
   }catch{notify("Couldn't log out. Please try again.")}
@@ -456,33 +459,167 @@ accountForm.addEventListener("submit",async event=>{
   accountMessage.textContent="";
   const email=accountEmail.value.trim();
   const password=accountPassword.value;
-  if(password.length<10){accountMessage.textContent="Use a password with at least 10 characters.";return}
+  if((accountMode==="signup"||accountMode==="login"||accountMode==="reset")&&password.length<10){
+    accountMessage.textContent="Use a password with at least 10 characters.";return;
+  }
   accountSubmit.disabled=true;
-  accountSubmit.querySelector("span").textContent=accountMode==="signup"?"Creating…":"Logging in…";
+  const labels={signup:"Creating…",login:"Logging in…",forgot:"Sending…",reset:"Updating…"};
+  accountSubmit.querySelector("span").textContent=labels[accountMode]||"Working…";
   try{
+    if(accountMode==="forgot"){
+      const response=await fetch("/api/auth/forgot",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email})});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"Couldn't request a reset link.");
+      accountMessage.textContent=data.message;
+      return;
+    }
+    if(accountMode==="reset"){
+      const response=await fetch("/api/auth/reset",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:pendingResetToken,password})});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"Couldn't reset your password.");
+      pendingResetToken="";
+      accountPassword.value="";
+      accountMode="login";
+      updateAccountMode();
+      accountMessage.textContent="Password reset. You can now log in.";
+      return;
+    }
     const response=await fetch("/api/auth/"+accountMode,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
     const data=await response.json();
-    if(!response.ok)throw new Error(data.error||"Authentication failed.");
+    if(!response.ok){
+      if(accountMode==="signup"&&response.status===503)accountResend.hidden=false;
+      if(accountMode==="login"&&response.status===403)accountResend.hidden=false;
+      throw new Error(data.error||"Authentication failed.");
+    }
+    if(accountMode==="signup"){
+      accountResend.hidden=false;
+      accountMessage.textContent=data.message||"Check your inbox to verify your email.";
+      return;
+    }
     currentUser=data.user;
     accountModal.hidden=true;
     accountPassword.value="";
     accountButton.textContent="Log out";
     accountLabel.textContent=currentUser.email;
+    settingsButton.hidden=false;
     await syncAccountLinks();
-    notify(accountMode==="signup"?"Account created":"Welcome back");
+    notify("Welcome back");
   }catch(error){accountMessage.textContent=error.message||"Please try again."}
-  finally{accountSubmit.disabled=false;updateAccountMode()}
+  finally{accountSubmit.disabled=false;updateAccountMode();if(accountMode==="signup"||accountMode==="login")accountResend.hidden=false}
 });
 accountSwitch.addEventListener("click",()=>{
   accountMode=accountMode==="login"?"signup":"login";
   accountMessage.textContent="";
+  accountResend.hidden=true;
   updateAccountMode();
+});
+accountForgot.addEventListener("click",()=>{
+  accountMessage.textContent="";
+  openAccountModal("forgot");
+});
+accountResend.addEventListener("click",async()=>{
+  accountMessage.textContent="";
+  const email=accountEmail.value.trim();
+  const password=accountPassword.value;
+  if(!email||!password){accountMessage.textContent="Enter your email and password first.";return}
+  accountResend.disabled=true;
+  try{
+    const response=await fetch("/api/auth/resend-verification",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||"Couldn't send the verification email.");
+    accountMessage.textContent=data.message||"Verification email sent.";
+  }catch(error){accountMessage.textContent=error.message||"Please try again."}
+  finally{accountResend.disabled=false}
 });
 accountClose.addEventListener("click",closeAccountModal);
 accountBackdrop.addEventListener("click",closeAccountModal);
 document.addEventListener("keydown",event=>{
   if(event.key==="Escape"&&!accountModal.hidden)closeAccountModal();
+  if(event.key==="Escape"&&!settingsModal.hidden)settingsModal.hidden=true;
 });
+async function loadSessions(){
+  sessionsList.innerHTML='<p class="settings-hint">Loading sessions…</p>';
+  const response=await fetch("/api/account/sessions");
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error||"Couldn't load sessions.");
+  sessionsList.replaceChildren();
+  for(const session of data.sessions||[]){
+    const row=document.createElement("div");
+    row.className="session-row";
+    const details=document.createElement("div");
+    details.className="session-details";
+    const title=document.createElement("strong");
+    title.textContent=session.current?"This device":"Signed-in session";
+    const time=document.createElement("span");
+    time.textContent="Signed in "+niceDate(session.createdAt)+" · Expires "+niceDate(session.expiresAt);
+    details.append(title,time);
+    row.append(details);
+    if(session.current){
+      const current=document.createElement("span");
+      current.className="session-current";
+      current.textContent="CURRENT";
+      row.append(current);
+    }else{
+      const revoke=document.createElement("button");
+      revoke.className="session-revoke";
+      revoke.type="button";
+      revoke.textContent="Sign out";
+      revoke.addEventListener("click",async()=>{
+        const result=await fetch("/api/account/sessions/"+session.id,{method:"DELETE"});
+        if(!result.ok){notify("Couldn't sign out that session.");return}
+        await loadSessions();
+        notify("Session signed out");
+      });
+      row.append(revoke);
+    }
+    sessionsList.append(row);
+  }
+  if(!sessionsList.children.length)sessionsList.innerHTML='<p class="settings-hint">No active sessions found.</p>';
+}
+settingsButton.addEventListener("click",async()=>{
+  if(!currentUser)return;
+  settingsEmail.textContent=currentUser.email;
+  settingsMessage.textContent="";
+  settingsModal.hidden=false;
+  try{await loadSessions()}catch(error){sessionsList.textContent=error.message}
+});
+settingsClose.addEventListener("click",()=>settingsModal.hidden=true);
+settingsBackdrop.addEventListener("click",()=>settingsModal.hidden=true);
+changePasswordForm.addEventListener("submit",async event=>{
+  event.preventDefault();
+  settingsMessage.textContent="";
+  if(newPassword.value.length<10){settingsMessage.textContent="Use at least 10 characters for your new password.";return}
+  changePasswordSubmit.disabled=true;
+  changePasswordSubmit.querySelector("span").textContent="Updating…";
+  try{
+    const response=await fetch("/api/account/change-password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({currentPassword:currentPassword.value,newPassword:newPassword.value})});
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||"Couldn't update password.");
+    currentPassword.value="";
+    newPassword.value="";
+    settingsMessage.textContent=data.message||"Password updated.";
+    await loadSessions();
+  }catch(error){settingsMessage.textContent=error.message||"Please try again."}
+  finally{changePasswordSubmit.disabled=false;changePasswordSubmit.querySelector("span").textContent="Update password"}
+});
+async function handleAccountLink(){
+  const params=new URLSearchParams(location.search);
+  const verifyToken=params.get("verify");
+  const resetToken=params.get("reset");
+  if(verifyToken){
+    history.replaceState(null,"",location.pathname);
+    try{
+      const response=await fetch("/api/auth/verify",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:verifyToken})});
+      const data=await response.json();
+      openAccountModal("login");
+      accountMessage.textContent=response.ok?"Email verified. You can now log in.":(data.error||"That verification link is invalid or expired.");
+    }catch{openAccountModal("login");accountMessage.textContent="We couldn't verify your email. Please try again."}
+  }else if(resetToken){
+    history.replaceState(null,"",location.pathname);
+    pendingResetToken=resetToken;
+    openAccountModal("reset");
+  }
+}
 
 form.addEventListener("submit",async event=>{
   event.preventDefault();
@@ -590,3 +727,4 @@ linkSort.addEventListener("change",renderRecent);
 bulkCreate.addEventListener("click",createBulkLinks);
 renderRecent();
 refreshAccount().catch(()=>notify("Account status couldn’t be loaded."));
+handleAccountLink();
