@@ -99,6 +99,12 @@ function renderRecent(){
       actions.append(disable);
     }
     if(item.manageKey){
+      const extend=document.createElement("button");
+      extend.className="small-action";
+      extend.type="button";
+      extend.textContent="Extend 24h";
+      extend.addEventListener("click",()=>extendLink(item));
+      actions.append(extend);
       const remove=document.createElement("button");
       remove.className="small-action";
       remove.type="button";
@@ -167,6 +173,21 @@ async function disableLink(item){
     renderRecent();
     notify("Link disabled");
   }catch(error){notify(error.message||"Could not disable link")}
+}
+async function extendLink(item){
+  try{
+    const response=await fetch("/api/links/"+encodeURIComponent(item.slug),{
+      method:"PATCH",
+      headers:{"Authorization":"Bearer "+item.manageKey,"Content-Type":"application/json"},
+      body:JSON.stringify({extendBy:86400})
+    });
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||"Could not extend link");
+    const items=readLinks().map(link=>link.slug===item.slug?{...link,expiresAt:data.expiresAt}:link);
+    saveLinks(items);
+    renderRecent();
+    notify("Link extended by 24 hours");
+  }catch(error){notify(error.message||"Could not extend link")}
 }
 async function deleteLink(item){
   if(!confirm("Permanently delete this UndoLink record? The original destination will not be affected."))return;
