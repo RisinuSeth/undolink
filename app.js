@@ -3,6 +3,7 @@ const destination=document.querySelector("#destination");
 const expiry=document.querySelector("#expiry");
 const limit=document.querySelector("#limit");
 const customSlug=document.querySelector("#custom-slug");
+const linkPassword=document.querySelector("#link-password");
 const button=document.querySelector("#create-button");
 const message=document.querySelector("#form-message");
 const result=document.querySelector("#result");
@@ -123,7 +124,8 @@ async function showStats(item,row,button){
     const summary=document.createElement("p");
     summary.textContent=data.clicks+" click"+(data.clicks===1?"":"s")+
       (data.maxClicks?" · limit "+data.maxClicks:" · no click limit")+
-      " · "+(data.disabled?"disabled":Number(data.expiresAt)<=Date.now()?"expired":"active");
+      " · "+(data.disabled?"disabled":Number(data.expiresAt)<=Date.now()?"expired":"active")+
+      (data.passwordProtected?" · password protected":"");
     panel.append(heading,summary);
     if(data.recentClicks&&data.recentClicks.length){
       const label=document.createElement("p");
@@ -197,7 +199,8 @@ form.addEventListener("submit",async event=>{
         destination:url.href,
         expiresIn:Number(expiry.value),
         maxClicks:limit.value?Number(limit.value):null,
-        customSlug:customSlug.value.trim().toLowerCase()
+        customSlug:customSlug.value.trim().toLowerCase(),
+        password:linkPassword.value
       })
     });
     const data=await response.json();
