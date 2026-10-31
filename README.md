@@ -19,7 +19,10 @@ Temporary links that stop redirecting when their time is up.
 - Only HTTP and HTTPS destinations are accepted; embedded URL credentials are rejected.
 - Basic per-IP creation rate limiting (hashed IP identifier; 30 creations per hour).
 - Browser-side guest dashboard with search, status filters, expiry sorting, summary counts and management actions.
-- Optional email/password accounts with secure, HttpOnly session cookies and PBKDF2-SHA-256 password hashing.
+- Email/password accounts with secure, HttpOnly session cookies and PBKDF2-SHA-256 password hashing.
+- Email verification using single-use, expiring verification tokens.
+- Password reset emails using single-use, expiring reset tokens.
+- Account settings with password changes and active-session review/revocation.
 - Account-owned links are stored in D1 and can be loaded from another device after login; existing guest links can be claimed using their private management keys.
 - Bulk creation of up to 10 links per batch, with one expiry setting and individual management keys.
 
@@ -30,10 +33,21 @@ Temporary links that stop redirecting when their time is up.
 - Expiry disables the UndoLink redirect. It does not delete, revoke or modify the original destination URL. Anyone who already knows the destination can still visit it directly.
 - Rate-limit identifiers are hashed, and old rate-limit windows are periodically cleaned up.
 - Account passwords are salted and hashed with PBKDF2-SHA-256 (210,000 iterations); sessions use random bearer tokens stored only as SHA-256 hashes and are delivered in Secure, HttpOnly, SameSite=Lax cookies.
-- Account authentication is early access: email verification and password reset are not implemented yet. Users should only register with an email they can retain access to and must keep their password safe.
+- Account emails are sent through Resend. Verification links expire after 24 hours; password reset links expire after one hour. Tokens are single-use and only their SHA-256 hashes are stored.
+- Password changes require the current password and revoke other sessions. Users can review active sessions and sign out individual sessions.
+- Email verification and recovery require the Resend environment variables described below. Do not claim signup or recovery email delivery is working until a verified sender and API key are configured and tested.
 
 ## Database
-The D1 binding is named `DB`. The schema migrations are `0001_init.sql` (links), `0002_click_analytics.sql` (click analytics), `0003_password_protection.sql` (password-protected links), `0004_scheduling_and_pause.sql` (scheduled and paused links), and `0005_accounts.sql` (users, sessions and link ownership).
+The D1 binding is named `DB`. The schema migrations are `0001_init.sql` (links), `0002_click_analytics.sql` (click analytics), `0003_password_protection.sql` (password-protected links), `0004_scheduling_and_pause.sql` (scheduled and paused links), `0005_accounts.sql` (users, sessions and link ownership), and `0006_email_verification_and_recovery.sql` (email verification and password recovery).
+
+## Email delivery setup
+
+Transactional email uses the Resend API. Before enabling account signup, verify a sending domain in Resend and configure these Cloudflare Pages production variables under Settings → Variables and Secrets:
+- `RESEND_API_KEY` — secret containing the Resend API key.
+- `EMAIL_FROM` — verified sender, for example `UndoLink <accounts@your-verified-domain.example>` (replace with an address on your verified domain).
+- `APP_ORIGIN` — optional canonical public origin, for example `https://undolink.pages.dev`; set this to the production hostname so verification and reset links do not point to preview deployments.
+
+Redeploy after configuring variables. Until email delivery is configured, new registrations are saved as unverified and login is blocked; users can request another verification email after the provider is configured. Existing accounts created before this migration are marked verified to avoid locking them out.
 
 ## Local development
 1. Install Node.js and Wrangler.
@@ -43,4 +57,5 @@ The D1 binding is named `DB`. The schema migrations are `0001_init.sql` (links),
    `npx wrangler d1 execute undolink-db --local --file=migrations/0003_password_protection.sql`
    `npx wrangler d1 execute undolink-db --local --file=migrations/0004_scheduling_and_pause.sql`
    `npx wrangler d1 execute undolink-db --local --file=migrations/0005_accounts.sql`
+   `npx wrangler d1 execute undolink-db --local --file=migrations/0006_email_verification_and_recovery.sql`
 3. Run `npx wrangler pages dev .`.
