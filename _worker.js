@@ -62,6 +62,7 @@ async function createLink(request, env) {
     return json({ error: "Use a public HTTP or HTTPS URL without embedded login details." }, 400);
   }
 
+  const now = Math.floor(Date.now() / 1000);
   const duration = Number(body.expiresIn);
   let expiresAt;
   if (body.expiresAt != null) {
@@ -81,7 +82,6 @@ async function createLink(request, env) {
 
   const ip = request.headers.get("CF-Connecting-IP") || "unknown";
   const ipHash = await digest(ip);
-  const now = Math.floor(Date.now() / 1000);
   const windowStart = Math.floor(now / 3600) * 3600;
 
   const rate = await env.DB.prepare(
