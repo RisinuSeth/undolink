@@ -12,6 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
@@ -83,6 +84,8 @@
           <button id="copy-button" class="copy-button" type="button">Copy link</button>
         </div>
         <p class="expiry-note" id="expiry-note"></p>
+        <div class="qr-actions"><button id="qr-button" class="small-action" type="button">Show QR code</button><button id="qr-download" class="small-action" type="button" hidden>Download PNG</button></div>
+        <div class="qr-panel" id="qr-panel" hidden><canvas id="qr-canvas" width="200" height="200" aria-label="QR code for your temporary link"></canvas><p>Scan to open this temporary link.</p></div>
         <p class="manage-note">Your private management key is saved in this browser. Keep it private — it lets you disable this link.</p>
       </section>
     </section>
