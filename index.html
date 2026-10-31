@@ -18,7 +18,7 @@
 <body>
   <header class="topbar">
     <a class="brand" href="/" aria-label="UndoLink home"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" fill="currentColor"/><g transform="rotate(-45 16 16)" fill="none" stroke="#fff" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5v7.5c0 4.2 2.8 7 7 7s7-2.8 7-7V5"/><path d="M9 27v-7.5c0-4.2 2.8-7 7-7s7 2.8 7 7V27"/></g></svg><span>UndoLink</span></a>
-    <span class="top-note">Temporary links. Your terms.</span>
+    <div class="account-actions"><span class="top-note" id="account-label">Guest mode</span><button class="account-button" id="account-button" type="button">Log in</button></div>
   </header>
 
   <main>
@@ -146,6 +146,26 @@
 
     <footer><span>UndoLink</span><span>Once a link expires, its UndoLink redirect stops working. The original destination is not deleted or changed.</span></footer>
   </main>
+
+  <div class="account-modal" id="account-modal" hidden>
+    <div class="account-backdrop" id="account-backdrop"></div>
+    <section class="account-dialog" role="dialog" aria-modal="true" aria-labelledby="account-title">
+      <button class="account-close" id="account-close" type="button" aria-label="Close">×</button>
+      <p class="eyebrow">YOUR UNDOLINK ACCOUNT</p>
+      <h2 id="account-title">Welcome back.</h2>
+      <p class="account-copy" id="account-copy">Log in to access your saved links on any device.</p>
+      <form id="account-form" novalidate>
+        <label class="field-label" for="account-email">Email address</label>
+        <input class="account-input" id="account-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" required>
+        <label class="field-label" for="account-password">Password</label>
+        <input class="account-input" id="account-password" name="password" type="password" autocomplete="current-password" minlength="10" maxlength="128" placeholder="At least 10 characters" required>
+        <p class="account-message" id="account-message" role="status" aria-live="polite"></p>
+        <button class="create-button" id="account-submit" type="submit"><span>Log in</span><span aria-hidden="true">↗</span></button>
+      </form>
+      <p class="account-switch-copy"><span id="account-switch-label">New to UndoLink?</span> <button id="account-switch" type="button">Create an account</button></p>
+      <p class="account-footnote">Early access: use an email you can keep access to. Password recovery and email verification are not available yet.</p>
+    </section>
+  </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>
