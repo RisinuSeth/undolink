@@ -298,6 +298,9 @@ async function auth(request, env, action) {
   }
   let user;
   if (action === "signup") {
+    if (body.acceptedTerms !== true || body.termsVersion !== "2026-10-31") {
+      return json({ error: "Please accept the current Terms of Service before creating an account." }, 400);
+    }
     const salt = token(16);
     const passwordHash = await hashAuthPassword(password, salt);
     user = { id: crypto.randomUUID(), email };
@@ -307,6 +310,8 @@ async function auth(request, env, action) {
     } catch {
       return json({ error: "An account with that email may already exist. Try logging in instead." }, 409);
     }
+    await env.DB.prepare("INSERT INTO terms_acceptances (id,user_id,terms_version,accepted_at) VALUES (?,?,?,?)")
+      .bind(crypto.randomUUID(), user.id, "2026-10-31", Math.floor(Date.now() / 1000)).run();
     try {
       await issueEmailAction(env, user.id, email, "verify_email", request);
       return json({ ok: true, verificationRequired: true, message: "Check your inbox for a verification link. It expires in 24 hours." }, 201);
