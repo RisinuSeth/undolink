@@ -14,6 +14,7 @@ Temporary links that stop redirecting when their time is up.
 - Optional click limits, including one-time links.
 - Disable or permanently delete a link using its private management key.
 - Private click analytics: total clicks, click-limit status and the 10 most recent click timestamps.
+- QR code generation and PNG download for created links.
 - Only HTTP and HTTPS destinations are accepted; embedded URL credentials are rejected.
 - Basic per-IP creation rate limiting (hashed IP identifier; 30 creations per hour).
 - Browser-side recent-link list with copy, disable, delete and stats actions.
