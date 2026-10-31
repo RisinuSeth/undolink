@@ -82,10 +82,54 @@ async function authRateLimited(request, env, action) {
   ).bind(ipHash, action, windowStart).first();
   return Number(row?.count || 0) > 15;
 }
+
+function escapeEmailHtml(value) {
+  return String(value).replace(/[&<>"']/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[char]));
+}
+async function sendAccountEmail(env, to, subject, heading, message, actionUrl, actionLabel) {
+  if (!env.RESEND_API_KEY || !env.EMAIL_FROM) throw new Error("Email delivery is not configured.");
+  const safeEmail = escapeEmailHtml(to);
+  const safeHeading = escapeEmailHtml(heading);
+  const safeMessage = escapeEmailHtml(message);
+  const safeUrl = escapeEmailHtml(actionUrl);
+  const safeLabel = escapeEmailHtml(actionLabel);
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Authorization": "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: env.EMAIL_FROM,
+      to: [to],
+      subject,
+      html: '<div style="font-family:Arial,sans-serif;max-width:560px;margin:40px auto;color:#252525;line-height:1.6">' +
+        '<div style="font-weight:800;font-size:22px;margin-bottom:30px">UndoLink</div><h1 style="font-size:28px;line-height:1.2">' + safeHeading + '</h1>' +
+        '<p>' + safeMessage + '</p><p style="margin:28px 0"><a href="' + safeUrl + '" style="display:inline-block;padding:13px 20px;background:#f07832;color:#fff;text-decoration:none;font-weight:700">' + safeLabel + '</a></p>' +
+        '<p style="font-size:12px;color:#777">If you did not request this, you can ignore this email.</p><p style="font-size:11px;color:#999">Sent to ' + safeEmail + ' by UndoLink.</p></div>'
+    })
+  });
+  if (!response.ok) throw new Error("Email provider rejected the message.");
+}
+async function issueEmailAction(env, userId, email, purpose, request) {
+  const raw = token(32);
+  const now = Math.floor(Date.now() / 1000);
+  const lifetime = purpose === "verify_email" ? 86400 : 3600;
+  await env.DB.prepare("UPDATE email_action_tokens SET used_at=? WHERE user_id=? AND purpose=? AND used_at IS NULL")
+    .bind(now, userId, purpose).run();
+  await env.DB.prepare("INSERT INTO email_action_tokens (token_hash,user_id,purpose,created_at,expires_at) VALUES (?,?,?,?,?)")
+    .bind(await digest(raw), userId, purpose, now, now + lifetime).run();
+  const origin = env.APP_ORIGIN || new URL(request.url).origin;
+  const actionUrl = origin + (purpose === "verify_email" ? "/?verify=" : "/?reset=") + raw;
+  if (purpose === "verify_email") {
+    await sendAccountEmail(env, email, "Verify your UndoLink email", "Verify your email address", "Confirm your email address to activate your UndoLink account. This link expires in 24 hours.", actionUrl, "Verify email");
+  } else {
+    await sendAccountEmail(env, email, "Reset your UndoLink password", "Reset your password", "We received a request to reset your UndoLink password. This link expires in one hour.", actionUrl, "Reset password");
+  }
+}
 async function auth(request, env, action) {
   if (action === "me") {
     const session = await getSession(request, env);
-    return session ? json({ user: { id: session.userId, email: session.email } }) : json({ user: null });
+    if (!session) return json({ user: null });
+    const row = await env.DB.prepare("SELECT email_verified_at FROM users WHERE id=?").bind(session.userId).first();
+    return json({ user: { id: session.userId, email: session.email, emailVerified: !!row?.email_verified_at } });
   }
   if (action === "logout") {
     const session = await getSession(request, env);
@@ -94,6 +138,81 @@ async function auth(request, env, action) {
       headers: { ...securityHeaders, "content-type": "application/json; charset=utf-8", "cache-control": "no-store",
         "set-cookie": authCookieName + "=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0" }
     });
+  }
+  if (action === "verify") {
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "That verification link is invalid." }, 400); }
+    const raw = typeof body.token === "string" ? body.token : "";
+    if (!/^[a-f0-9]{64}$/.test(raw)) return json({ error: "That verification link is invalid or expired." }, 400);
+    const now = Math.floor(Date.now() / 1000);
+    const consumed = await env.DB.prepare(
+      "UPDATE email_action_tokens SET used_at=? WHERE token_hash=? AND purpose='verify_email' AND used_at IS NULL AND expires_at>? RETURNING user_id"
+    ).bind(now, await digest(raw), now).first();
+    if (!consumed) return json({ error: "That verification link is invalid or expired. Request a new one." }, 400);
+    await env.DB.prepare("UPDATE users SET email_verified_at=? WHERE id=?").bind(now, consumed.user_id).run();
+    return json({ ok: true });
+  }
+  if (action === "reset") {
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "That reset link is invalid." }, 400); }
+    const raw = typeof body.token === "string" ? body.token : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    if (!/^[a-f0-9]{64}$/.test(raw) || password.length < 10 || password.length > 128) {
+      return json({ error: "Use a valid reset link and a password between 10 and 128 characters." }, 400);
+    }
+    const now = Math.floor(Date.now() / 1000);
+    const consumed = await env.DB.prepare(
+      "UPDATE email_action_tokens SET used_at=? WHERE token_hash=? AND purpose='reset_password' AND used_at IS NULL AND expires_at>? RETURNING user_id"
+    ).bind(now, await digest(raw), now).first();
+    if (!consumed) return json({ error: "That reset link is invalid or expired. Request another one." }, 400);
+    const salt = token(16);
+    const passwordHash = await hashAuthPassword(password, salt);
+    await env.DB.prepare("UPDATE users SET password_salt=?,password_hash=? WHERE id=?").bind(salt, passwordHash, consumed.user_id).run();
+    await env.DB.prepare("DELETE FROM sessions WHERE user_id=?").bind(consumed.user_id).run();
+    return json({ ok: true });
+  }
+  if (action === "resend") {
+    const session = await getSession(request, env);
+    if (!session) return json({ error: "Log in to request a verification email." }, 401);
+    if (await authRateLimited(request, env, action)) return json({ error: "Too many requests. Try again later." }, 429);
+    const user = await env.DB.prepare("SELECT email,email_verified_at FROM users WHERE id=?").bind(session.userId).first();
+    if (!user) return json({ error: "Account not found." }, 404);
+    if (user.email_verified_at) return json({ ok: true, message: "Your email is already verified." });
+    try {
+      await issueEmailAction(env, session.userId, user.email, "verify_email", request);
+      return json({ ok: true, message: "Verification email sent." });
+    } catch {
+      return json({ error: "Email delivery is not configured yet. Please try again later." }, 503);
+    }
+  }
+  if (action === "forgot") {
+    if (await authRateLimited(request, env, action)) return json({ error: "Too many requests. Try again later." }, 429);
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "Enter a valid email address." }, 400); }
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    if (!/^[^\s@]{1,64}@[^s@]{1,190}\.[^s@]{2,30}$/.test(email)) return json({ error: "Enter a valid email address." }, 400);
+    const user = await env.DB.prepare("SELECT id,email FROM users WHERE email=? COLLATE NOCASE").bind(email).first();
+    if (user) {
+      try { await issueEmailAction(env, user.id, user.email, "reset_password", request); }
+      catch { return json({ error: "Password recovery email is temporarily unavailable. Please try again later." }, 503); }
+    }
+    return json({ ok: true, message: "If an account exists for that address, a password reset email is on its way." });
+  }
+  if (action === "change") {
+    const session = await getSession(request, env);
+    if (!session) return json({ error: "Please log in again." }, 401);
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "Invalid request." }, 400); }
+    const current = typeof body.currentPassword === "string" ? body.currentPassword : "";
+    const next = typeof body.newPassword === "string" ? body.newPassword : "";
+    if (next.length < 10 || next.length > 128) return json({ error: "Your new password must be between 10 and 128 characters." }, 400);
+    const user = await env.DB.prepare("SELECT password_salt,password_hash FROM users WHERE id=?").bind(session.userId).first();
+    if (!user || await hashAuthPassword(current, user.password_salt) !== user.password_hash) return json({ error: "Your current password is incorrect." }, 401);
+    const salt = token(16);
+    const passwordHash = await hashAuthPassword(next, salt);
+    await env.DB.prepare("UPDATE users SET password_salt=?,password_hash=? WHERE id=?").bind(salt, passwordHash, session.userId).run();
+    await env.DB.prepare("DELETE FROM sessions WHERE user_id=? AND id<>?").bind(session.userId, session.sessionId).run();
+    return json({ ok: true, message: "Password updated. Other sessions were signed out." });
   }
   if (action !== "signup" && action !== "login") return json({ error: "Not found." }, 404);
   if (await authRateLimited(request, env, action)) return json({ error: "Too many attempts. Please try again in an hour." }, 429);
@@ -105,7 +224,7 @@ async function auth(request, env, action) {
   } catch { return json({ error: "Enter a valid email and password." }, 400); }
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body.password === "string" ? body.password : "";
-  if (!/^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,30}$/.test(email) || password.length < 10 || password.length > 128) {
+  if (!/^[^\s@]{1,64}@[^s@]{1,190}\.[^s@]{2,30}$/.test(email) || password.length < 10 || password.length > 128) {
     return json({ error: "Use a valid email and a password between 10 and 128 characters." }, 400);
   }
   let user;
@@ -114,22 +233,44 @@ async function auth(request, env, action) {
     const passwordHash = await hashAuthPassword(password, salt);
     user = { id: crypto.randomUUID(), email };
     try {
-      await env.DB.prepare("INSERT INTO users (id,email,password_salt,password_hash,created_at) VALUES (?,?,?,?,?)")
+      await env.DB.prepare("INSERT INTO users (id,email,password_salt,password_hash,created_at,email_verified_at) VALUES (?,?,?,?,?,NULL)")
         .bind(user.id, email, salt, passwordHash, Math.floor(Date.now() / 1000)).run();
     } catch {
       return json({ error: "An account with that email may already exist. Try logging in instead." }, 409);
     }
-  } else {
-    const row = await env.DB.prepare("SELECT id,email,password_salt,password_hash FROM users WHERE email=? COLLATE NOCASE").bind(email).first();
-    if (!row) return json({ error: "Email or password is incorrect." }, 401);
-    const candidate = await hashAuthPassword(password, row.password_salt);
-    if (candidate !== row.password_hash) return json({ error: "Email or password is incorrect." }, 401);
-    user = { id: row.id, email: row.email };
+    try {
+      await issueEmailAction(env, user.id, email, "verify_email", request);
+      return json({ ok: true, verificationRequired: true, message: "Check your inbox for a verification link. It expires in 24 hours." }, 201);
+    } catch {
+      return json({ error: "Your account was created, but email delivery is not configured yet. Configure the email service, then use Log in to request verification." }, 503);
+    }
   }
+  const row = await env.DB.prepare("SELECT id,email,password_salt,password_hash,email_verified_at FROM users WHERE email=? COLLATE NOCASE").bind(email).first();
+  if (!row) return json({ error: "Email or password is incorrect." }, 401);
+  const candidate = await hashAuthPassword(password, row.password_salt);
+  if (candidate !== row.password_hash) return json({ error: "Email or password is incorrect." }, 401);
+  if (!row.email_verified_at) return json({ error: "Verify your email before logging in. Use the resend verification option after signing in is enabled." }, 403);
+  user = { id: row.id, email: row.email };
   const cookie = await createSession(user.id, env);
   return new Response(JSON.stringify({ user: publicUser(user) }), {
     headers: { ...securityHeaders, "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "set-cookie": cookie }
   });
+}
+async function accountSessions(request, env, method, sessionId) {
+  const session = await getSession(request, env);
+  if (!session) return json({ error: "Please log in again." }, 401);
+  if (method === "GET") {
+    const rows = await env.DB.prepare("SELECT id,created_at,expires_at FROM sessions WHERE user_id=? AND expires_at>? ORDER BY created_at DESC")
+      .bind(session.userId, Math.floor(Date.now() / 1000)).all();
+    return json({ sessions: (rows.results || []).map(row => ({ id: row.id, createdAt: row.created_at * 1000, expiresAt: row.expires_at * 1000, current: row.id === session.sessionId })) });
+  }
+  if (method === "DELETE") {
+    if (!/^[0-9a-f-]{36}$/i.test(sessionId)) return json({ error: "Invalid session." }, 400);
+    await env.DB.prepare("DELETE FROM sessions WHERE id=? AND user_id=? AND id<>?")
+      .bind(sessionId, session.userId, session.sessionId).run();
+    return json({ ok: true });
+  }
+  return json({ error: "Method not allowed." }, 405);
 }
 
 async function claimAccountLink(request, env) {
