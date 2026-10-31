@@ -543,7 +543,16 @@ export default {
     }
     if (url.pathname === "/api/auth/signup" && request.method === "POST") {
       try { return await auth(request, env, "signup"); }
-      catch { return json({ error: "We couldn't create your account right now." }, 503); }
+      catch (error) {
+        try {
+          await env.DB.prepare("INSERT INTO signup_diagnostics (id,created_at,error_name,error_message) VALUES (?,?,?,?)")
+            .bind(crypto.randomUUID(), Math.floor(Date.now() / 1000),
+              String(error?.name || "Error").slice(0, 100),
+              String(error?.message || error || "Unknown signup error").slice(0, 500)).run();
+        } catch (logError) { console.error("UndoLink signup diagnostic write failed", logError); }
+        console.error("UndoLink signup failed", error);
+        return json({ error: "We couldn't create your account right now." }, 503);
+      }
     }
     if (url.pathname === "/api/auth/login" && request.method === "POST") {
       try { return await auth(request, env, "login"); }
