@@ -117,7 +117,7 @@ async function submitSupportRequest(request, env) {
 
   if (name.length > 100 || email.length > 254 || subject.length < 3 || subject.length > 150 ||
       message.length < 10 || message.length > 5000 ||
-      !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return json({ error: "Check your email, subject and message, then try again." }, 400);
   }
 
