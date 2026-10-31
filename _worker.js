@@ -614,6 +614,20 @@ export default {
       }));
     }
 
+    if (request.method === "GET" && (url.pathname === "/terms" || url.pathname === "/terms.html")) {
+      return env.ASSETS.fetch(new Request(new URL("/terms.html", request.url), {
+        method: "GET",
+        headers: request.headers
+      }));
+    }
+
+    if (request.method === "GET" && (url.pathname === "/privacy" || url.pathname === "/privacy.html")) {
+      return env.ASSETS.fetch(new Request(new URL("/privacy.html", request.url), {
+        method: "GET",
+        headers: request.headers
+      }));
+    }
+
     if (url.pathname === "/api/auth/me" && request.method === "GET") {
       try { return await auth(request, env, "me"); }
       catch { return json({ error: "Authentication is temporarily unavailable." }, 503); }
