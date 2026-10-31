@@ -36,7 +36,118 @@ const clickChoices = new Set([1, 5, 10, 25, 100]);
 const slugPattern = /^[a-z0-9](?:[a-z0-9-]{2,22}[a-z0-9])$/;
 const reservedSlugs = new Set(["api","admin","assets","favicon","robots","privacy","terms","help","create","login","signup"]);
 
+
+const authCookieName = "undolink_session";
+const sessionLifetime = 30 * 24 * 60 * 60;
+const hashAuthPassword = async (password, saltHex) => {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt: fromHex(saltHex), iterations: 210000, hash: "SHA-256" }, key, 256);
+  return [...new Uint8Array(bits)].map(value => value.toString(16).padStart(2, "0")).join("");
+};
+const cookieValue = (request, name) => {
+  const header = request.headers.get("Cookie") || "";
+  for (const part of header.split(";")) {
+    const index = part.indexOf("=");
+    if (index > -1 && part.slice(0, index).trim() === name) return part.slice(index + 1).trim();
+  }
+  return "";
+};
+async function getSession(request, env) {
+  const raw = cookieValue(request, authCookieName);
+  if (!/^[a-f0-9]{64}$/.test(raw)) return null;
+  const row = await env.DB.prepare(
+    "SELECT users.id, users.email, sessions.id AS session_id FROM sessions JOIN users ON users.id=sessions.user_id WHERE sessions.token_hash=? AND sessions.expires_at>?"
+  ).bind(await digest(raw), Math.floor(Date.now() / 1000)).first();
+  return row ? { userId: row.id, email: row.email, sessionId: row.session_id } : null;
+}
+async function createSession(userId, env) {
+  const now = Math.floor(Date.now() / 1000);
+  const raw = token(32);
+  await env.DB.prepare("INSERT INTO sessions (id,user_id,token_hash,created_at,expires_at) VALUES (?,?,?,?,?)")
+    .bind(crypto.randomUUID(), userId, await digest(raw), now, now + sessionLifetime).run();
+  await env.DB.prepare("DELETE FROM sessions WHERE expires_at<=?").bind(now).run();
+  return "undolink_session=" + raw + "; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=" + sessionLifetime;
+}
+function publicUser(user) {
+  return { id: user.id, email: user.email };
+}
+async function authRateLimited(request, env, action) {
+  const now = Math.floor(Date.now() / 1000);
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  const ipHash = await digest(ip);
+  const windowStart = Math.floor(now / 3600) * 3600;
+  const row = await env.DB.prepare(
+    "INSERT INTO auth_rate_limits (ip_hash,action,window_start,count) VALUES (?,?,?,1) " +
+    "ON CONFLICT(ip_hash,action,window_start) DO UPDATE SET count=count+1 RETURNING count"
+  ).bind(ipHash, action, windowStart).first();
+  return Number(row?.count || 0) > 15;
+}
+async function auth(request, env, action) {
+  if (action === "me") {
+    const session = await getSession(request, env);
+    return session ? json({ user: { id: session.userId, email: session.email } }) : json({ user: null });
+  }
+  if (action === "logout") {
+    const session = await getSession(request, env);
+    if (session) await env.DB.prepare("DELETE FROM sessions WHERE id=?").bind(session.sessionId).run();
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { ...securityHeaders, "content-type": "application/json; charset=utf-8", "cache-control": "no-store",
+        "set-cookie": authCookieName + "=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0" }
+    });
+  }
+  if (action !== "signup" && action !== "login") return json({ error: "Not found." }, 404);
+  if (await authRateLimited(request, env, action)) return json({ error: "Too many attempts. Please try again in an hour." }, 429);
+  let body;
+  try {
+    const raw = await request.text();
+    if (raw.length > 2048) return json({ error: "Request too large." }, 413);
+    body = JSON.parse(raw);
+  } catch { return json({ error: "Enter a valid email and password." }, 400); }
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  const password = typeof body.password === "string" ? body.password : "";
+  if (!/^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,30}$/.test(email) || password.length < 10 || password.length > 128) {
+    return json({ error: "Use a valid email and a password between 10 and 128 characters." }, 400);
+  }
+  let user;
+  if (action === "signup") {
+    const salt = token(16);
+    const passwordHash = await hashAuthPassword(password, salt);
+    user = { id: crypto.randomUUID(), email };
+    try {
+      await env.DB.prepare("INSERT INTO users (id,email,password_salt,password_hash,created_at) VALUES (?,?,?,?,?)")
+        .bind(user.id, email, salt, passwordHash, Math.floor(Date.now() / 1000)).run();
+    } catch {
+      return json({ error: "An account with that email may already exist. Try logging in instead." }, 409);
+    }
+  } else {
+    const row = await env.DB.prepare("SELECT id,email,password_salt,password_hash FROM users WHERE email=? COLLATE NOCASE").bind(email).first();
+    if (!row) return json({ error: "Email or password is incorrect." }, 401);
+    const candidate = await hashAuthPassword(password, row.password_salt);
+    if (candidate !== row.password_hash) return json({ error: "Email or password is incorrect." }, 401);
+    user = { id: row.id, email: row.email };
+  }
+  const cookie = await createSession(user.id, env);
+  return new Response(JSON.stringify({ user: publicUser(user) }), {
+    headers: { ...securityHeaders, "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "set-cookie": cookie }
+  });
+}
+async function accountLinks(request, env) {
+  const session = await getSession(request, env);
+  if (!session) return json({ error: "Please log in to view your links." }, 401);
+  const rows = await env.DB.prepare(
+    "SELECT slug,destination_url,created_at,expires_at,max_clicks,clicks,disabled_at,starts_at,paused_at,password_hash FROM links WHERE user_id=? ORDER BY created_at DESC LIMIT 200"
+  ).bind(session.userId).all();
+  return json({ links: (rows.results || []).map(row => ({
+    slug: row.slug, url: new URL("/" + row.slug, request.url).href,
+    createdAt: row.created_at * 1000, expiresAt: row.expires_at * 1000,
+    maxClicks: row.max_clicks, clicks: row.clicks, disabled: row.disabled_at !== null,
+    scheduledAt: row.starts_at ? row.starts_at * 1000 : null, paused: row.paused_at !== null,
+    passwordProtected: !!row.password_hash
+  })) });
+}
+
 async function createLink(request, env) {
+  const ownerSession = await getSession(request, env);
   let rawBody;
   try { rawBody = await request.text(); }
   catch { return json({ error: "Please send a valid link request." }, 400); }
@@ -125,8 +236,8 @@ async function createLink(request, env) {
   for (const candidate of candidates) {
     try {
       await env.DB.prepare(
-        "INSERT INTO links (id,slug,destination_url,created_at,expires_at,max_clicks,manage_token_hash,password_salt,password_hash,starts_at) VALUES (?,?,?,?,?,?,?,?,?,?)"
-      ).bind(crypto.randomUUID(), candidate, destination.href, now, expiresAt, maxClicks, manageHash, passwordSalt, passwordHash, startsAt).run();
+        "INSERT INTO links (id,slug,destination_url,created_at,expires_at,max_clicks,manage_token_hash,password_salt,password_hash,starts_at,user_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)"
+      ).bind(crypto.randomUUID(), candidate, destination.href, now, expiresAt, maxClicks, manageHash, passwordSalt, passwordHash, startsAt, ownerSession?.userId || null).run();
       slug = candidate;
       break;
     } catch (error) {
@@ -140,13 +251,12 @@ async function createLink(request, env) {
 
 async function manage(request, env, slug) {
   const authorization = request.headers.get("Authorization") || "";
-  if (!authorization.startsWith("Bearer ") || authorization.length > 256) {
-    return json({ error: "This management key is invalid." }, 401);
-  }
-  const row = await env.DB.prepare("SELECT manage_token_hash FROM links WHERE slug=?").bind(slug).first();
-  if (!row || row.manage_token_hash !== await digest(authorization.slice(7))) {
-    return json({ error: "This management key is invalid." }, 401);
-  }
+  const session = await getSession(request, env);
+  const row = await env.DB.prepare("SELECT id,manage_token_hash,user_id FROM links WHERE slug=?").bind(slug).first();
+  const hasManageKey = authorization.startsWith("Bearer ") && authorization.length <= 256 &&
+    row && row.manage_token_hash === await digest(authorization.slice(7));
+  const ownsLink = !!(row && session && row.user_id && row.user_id === session.userId);
+  if (!row || (!hasManageKey && !ownsLink)) return json({ error: "This management key is invalid." }, 401);
 
   if (request.method === "GET") {
     const link = await env.DB.prepare(
@@ -265,6 +375,27 @@ async function unlock(request, env, slug) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    if (url.pathname === "/api/auth/me" && request.method === "GET") {
+      try { return await auth(request, env, "me"); }
+      catch { return json({ error: "Authentication is temporarily unavailable." }, 503); }
+    }
+    if (url.pathname === "/api/auth/signup" && request.method === "POST") {
+      try { return await auth(request, env, "signup"); }
+      catch { return json({ error: "We couldn't create your account right now." }, 503); }
+    }
+    if (url.pathname === "/api/auth/login" && request.method === "POST") {
+      try { return await auth(request, env, "login"); }
+      catch { return json({ error: "We couldn't log you in right now." }, 503); }
+    }
+    if (url.pathname === "/api/auth/logout" && request.method === "POST") {
+      try { return await auth(request, env, "logout"); }
+      catch { return json({ error: "We couldn't log you out right now." }, 503); }
+    }
+    if (url.pathname === "/api/account/links" && request.method === "GET") {
+      try { return await accountLinks(request, env); }
+      catch { return json({ error: "We couldn't load your account links." }, 503); }
+    }
 
     if (url.pathname === "/api/links" && request.method === "POST") {
       try { return await createLink(request, env); }
