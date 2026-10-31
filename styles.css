@@ -35,6 +35,8 @@ input::placeholder{color:#aaa}
 
 .settings-row{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .setting select{height:48px;border:1px solid #cfcfcb;padding:0 12px;font-size:13px;border-radius:0;cursor:pointer}
+.custom-expiry{height:46px;border:1px solid #cfcfcb;padding:0 10px;margin-top:9px;font-size:12px}
+.custom-expiry:focus{border-color:var(--orange)}
 .optional{font-size:9px;color:#969690;letter-spacing:.08em;font-weight:600}
 .create-button{margin-top:24px;width:100%;height:54px;border:0;background:var(--orange);color:white;display:flex;justify-content:space-between;align-items:center;padding:0 18px;font-weight:700;font-size:13px;cursor:pointer;transition:background .15s}
 .create-button:hover{background:var(--orange-dark)}
