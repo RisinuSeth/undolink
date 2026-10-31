@@ -2,6 +2,7 @@ const form=document.querySelector("#create-form");
 const destination=document.querySelector("#destination");
 const expiry=document.querySelector("#expiry");
 const limit=document.querySelector("#limit");
+const customSlug=document.querySelector("#custom-slug");
 const button=document.querySelector("#create-button");
 const message=document.querySelector("#form-message");
 const result=document.querySelector("#result");
@@ -195,7 +196,8 @@ form.addEventListener("submit",async event=>{
       body:JSON.stringify({
         destination:url.href,
         expiresIn:Number(expiry.value),
-        maxClicks:limit.value?Number(limit.value):null
+        maxClicks:limit.value?Number(limit.value):null,
+        customSlug:customSlug.value.trim().toLowerCase()
       })
     });
     const data=await response.json();
