@@ -71,6 +71,12 @@ function renderRecent(){
     main.append(a,p);
     const actions=document.createElement("div");
     actions.className="recent-actions";
+    const stats=document.createElement("button");
+    stats.className="small-action";
+    stats.type="button";
+    stats.textContent="Stats";
+    stats.addEventListener("click",()=>showStats(item,row,stats));
+    actions.append(stats);
     const cp=document.createElement("button");
     cp.className="small-action";
     cp.type="button";
@@ -96,6 +102,48 @@ function renderRecent(){
     row.append(main,actions);
     recentList.append(row);
   }
+}
+async function showStats(item,row,button){
+  const existing=row.querySelector(".link-stats");
+  if(existing){existing.remove();button.textContent="Stats";return}
+  button.disabled=true;
+  button.textContent="Loading…";
+  try{
+    const response=await fetch("/api/links/"+encodeURIComponent(item.slug),{
+      method:"GET",
+      headers:{"Authorization":"Bearer "+item.manageKey}
+    });
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||"Couldn't load analytics");
+    const panel=document.createElement("div");
+    panel.className="link-stats";
+    const heading=document.createElement("strong");
+    heading.textContent="Link activity";
+    const summary=document.createElement("p");
+    summary.textContent=data.clicks+" click"+(data.clicks===1?"":"s")+
+      (data.maxClicks?" · limit "+data.maxClicks:" · no click limit")+
+      " · "+(data.disabled?"disabled":Number(data.expiresAt)<=Date.now()?"expired":"active");
+    panel.append(heading,summary);
+    if(data.recentClicks&&data.recentClicks.length){
+      const label=document.createElement("p");
+      label.className="stats-label";
+      label.textContent="Recent clicks";
+      const list=document.createElement("ul");
+      for(const timestamp of data.recentClicks){
+        const li=document.createElement("li");
+        li.textContent=niceDate(timestamp);
+        list.append(li);
+      }
+      panel.append(label,list);
+    }else{
+      const empty=document.createElement("p");
+      empty.textContent="No clicks recorded yet.";
+      panel.append(empty);
+    }
+    row.append(panel);
+    button.textContent="Hide stats";
+  }catch(error){notify(error.message||"Couldn't load analytics");button.textContent="Stats"}
+  finally{button.disabled=false}
 }
 async function disableLink(item){
   if(!confirm("Disable this temporary link now? Anyone using it afterward will no longer be redirected."))return;
