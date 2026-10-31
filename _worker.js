@@ -94,7 +94,6 @@ async function createLink(request, env) {
     return json({ error: "A link password must be between 6 and 64 characters." }, 400);
   }
   const passwordSalt = password ? token(16) : null;
-  const passwordHash = password ? await hashPassword(password, passwordSalt) : null;
 
   const ip = request.headers.get("CF-Connecting-IP") || "unknown";
   const ipHash = await digest(ip);
@@ -117,6 +116,7 @@ async function createLink(request, env) {
     return json({ error: "Choose a custom slug with 4–24 lowercase letters, numbers or hyphens. Avoid reserved words." }, 400);
   }
 
+  const passwordHash = password ? await hashPassword(password, passwordSalt) : null;
   const manageKey = token(32);
   const manageHash = await digest(manageKey);
   let slug = null;
