@@ -18,6 +18,16 @@ const qrPanel=document.querySelector("#qr-panel");
 const qrCanvas=document.querySelector("#qr-canvas");
 const recentSection=document.querySelector("#recent-section");
 const recentList=document.querySelector("#recent-list");
+const dashboardSummary=document.querySelector("#dashboard-summary");
+const dashboardEmpty=document.querySelector("#dashboard-empty");
+const linkSearch=document.querySelector("#link-search");
+const linkFilter=document.querySelector("#link-filter");
+const linkSort=document.querySelector("#link-sort");
+const bulkUrls=document.querySelector("#bulk-urls");
+const bulkExpiry=document.querySelector("#bulk-expiry");
+const bulkCreate=document.querySelector("#bulk-create");
+const bulkMessage=document.querySelector("#bulk-message");
+const bulkResults=document.querySelector("#bulk-results");
 const toast=document.querySelector("#toast");
 const STORAGE_KEY="undolink.links.v1";
 let activeLink=null;
@@ -59,12 +69,38 @@ async function copy(text){
     notify("Copied to clipboard");
   }catch{notify("Couldn't copy automatically. Select and copy the link instead.")}
 }
+function linkStatus(item){
+  if(item.disabled)return "disabled";
+  if(item.paused)return "paused";
+  if(Number(item.expiresAt)<=Date.now())return "expired";
+  if(item.scheduledAt&&Number(item.scheduledAt)>Date.now())return "scheduled";
+  return "active";
+}
 function renderRecent(){
   const items=readLinks();
   recentSection.hidden=!items.length;
   recentList.replaceChildren();
-  for(const item of items){
-    const expired=Number(item.expiresAt)<=Date.now();
+  const counts={active:0,scheduled:0,paused:0,expired:0,disabled:0};
+  for(const item of items)counts[linkStatus(item)]++;
+  dashboardSummary.replaceChildren();
+  for(const [label,value] of [["Total",items.length],["Active",counts.active],["Scheduled",counts.scheduled],["Paused",counts.paused],["Expired",counts.expired]]){
+    const block=document.createElement("div");
+    block.className="summary-item";
+    const strong=document.createElement("strong");
+    strong.textContent=String(value);
+    const caption=document.createElement("span");
+    caption.textContent=label;
+    block.append(strong,caption);
+    dashboardSummary.append(block);
+  }
+  const query=(linkSearch.value||"").trim().toLowerCase();
+  const filter=linkFilter.value;
+  const sort=linkSort.value;
+  const visible=items.filter(item=>(!query||item.url.toLowerCase().includes(query)||item.slug.toLowerCase().includes(query))&&(filter==="all"||linkStatus(item)===filter));
+  visible.sort((x,y)=>sort==="expiry"?Number(x.expiresAt)-Number(y.expiresAt):sort==="oldest"?Number(x.createdAt||0)-Number(y.createdAt||0):Number(y.createdAt||0)-Number(x.createdAt||0));
+  dashboardEmpty.hidden=visible.length>0;
+  for(const item of visible){
+    const status=linkStatus(item);
     const row=document.createElement("div");
     row.className="recent-item";
     const main=document.createElement("div");
@@ -75,7 +111,7 @@ function renderRecent(){
     a.target="_blank";
     a.rel="noopener noreferrer";
     const p=document.createElement("p");
-    p.textContent=item.disabled?"Disabled":item.paused?"Paused":(item.scheduledAt&&Number(item.scheduledAt)>Date.now()?"Starts "+niceDate(item.scheduledAt)+" · Expires ":""+(expired?"Expired ":"Expires "))+niceDate(item.expiresAt);
+    p.textContent=status==="disabled"?"Disabled":status==="paused"?"Paused":status==="scheduled"?"Starts "+niceDate(item.scheduledAt)+" · Expires "+niceDate(item.expiresAt):(status==="expired"?"Expired ":"Expires ")+niceDate(item.expiresAt);
     main.append(a,p);
     const actions=document.createElement("div");
     actions.className="recent-actions";
@@ -91,7 +127,7 @@ function renderRecent(){
     cp.textContent="Copy";
     cp.addEventListener("click",()=>copy(item.url));
     actions.append(cp);
-    if(!expired&&!item.disabled&&item.manageKey){
+    if(status==="active"&&item.manageKey){
       const disable=document.createElement("button");
       disable.className="small-action";
       disable.type="button";
@@ -100,7 +136,7 @@ function renderRecent(){
       actions.append(disable);
     }
     if(item.manageKey&&!item.disabled){
-      if(!expired||item.paused){
+      if(status!=="expired"||item.paused){
         const pause=document.createElement("button");
         pause.className="small-action";
         pause.type="button";
@@ -231,6 +267,75 @@ async function deleteLink(item){
   }catch(error){notify(error.message||"Could not delete link")}
 }
 
+async function createBulkLinks(){
+  bulkMessage.textContent="";
+  bulkResults.hidden=true;
+  bulkResults.replaceChildren();
+  const lines=bulkUrls.value.split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
+  if(!lines.length){bulkMessage.textContent="Paste at least one URL.";return}
+  if(lines.length>10){bulkMessage.textContent="Create up to 10 links per batch.";return}
+  const destinations=[];
+  for(const line of lines){
+    let url;
+    try{url=new URL(line)}catch{bulkMessage.textContent="Invalid URL: "+line;return}
+    if(!["http:","https:"].includes(url.protocol)||url.username||url.password){
+      bulkMessage.textContent="Use public HTTP or HTTPS URLs without embedded login details.";
+      return;
+    }
+    destinations.push(url.href);
+  }
+  if(new Set(destinations).size!==destinations.length){bulkMessage.textContent="Remove duplicate URLs before creating the batch.";return}
+  bulkCreate.disabled=true;
+  bulkCreate.querySelector("span").textContent="Creating…";
+  const created=[];
+  const failed=[];
+  try{
+    for(const destinationUrl of destinations){
+      try{
+        const response=await fetch("/api/links",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({destination:destinationUrl,expiresIn:Number(bulkExpiry.value)})
+        });
+        const data=await response.json();
+        if(!response.ok)throw new Error(data.error||"Creation failed");
+        created.push({...data,createdAt:Date.now()});
+      }catch(error){failed.push({url:destinationUrl,error:error.message||"Creation failed"});break}
+    }
+    if(created.length){
+      const existing=readLinks();
+      const records=created.map(item=>({slug:item.slug,url:item.url,expiresAt:item.expiresAt,createdAt:item.createdAt,manageKey:item.manageKey}));
+      saveLinks([...records,...existing].slice(0,30));
+      renderRecent();
+    }
+    bulkResults.hidden=false;
+    for(const item of created){
+      const row=document.createElement("div");
+      row.className="bulk-result-row";
+      const link=document.createElement("a");
+      link.href=item.url;
+      link.textContent=item.url;
+      link.target="_blank";
+      link.rel="noopener noreferrer";
+      const copyButton=document.createElement("button");
+      copyButton.className="small-action";
+      copyButton.type="button";
+      copyButton.textContent="Copy";
+      copyButton.addEventListener("click",()=>copy(item.url));
+      row.append(link,copyButton);
+      bulkResults.append(row);
+    }
+    if(failed.length){
+      bulkMessage.textContent=created.length+" created. Stopped after an error: "+failed[0].error;
+    }else{
+      bulkMessage.textContent=created.length+" temporary link"+(created.length===1?"":"s")+" created successfully.";
+      bulkUrls.value="";
+    }
+  }finally{
+    bulkCreate.disabled=false;
+    bulkCreate.querySelector("span").textContent="Create links";
+  }
+}
 form.addEventListener("submit",async event=>{
   event.preventDefault();
   message.textContent="";
@@ -284,7 +389,7 @@ form.addEventListener("submit",async event=>{
     expiryNote.textContent="This link expires "+niceDate(data.expiresAt)+". After that, the UndoLink redirect will stop working.";
     result.hidden=false;
     const items=readLinks();
-    items.unshift({slug:data.slug,url:data.url,expiresAt:data.expiresAt,scheduledAt:startAtMs,manageKey:data.manageKey});
+    items.unshift({slug:data.slug,url:data.url,expiresAt:data.expiresAt,scheduledAt:startAtMs,createdAt:Date.now(),manageKey:data.manageKey});
     const saved=saveLinks(items.slice(0,30));
     renderRecent();
     if(!saved){
