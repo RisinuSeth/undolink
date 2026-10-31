@@ -35,6 +35,7 @@ Depending on how you use the service, our systems process:
 - Password salts and password hashes rather than account passwords in readable form.
 - Hashed IP-address values used for rate limiting and abuse prevention.
 - Limited technical diagnostic information when account creation encounters an error.
+- A record of the Terms of Service version accepted during account registration and the acceptance time, associated with the account.
 
 UndoLink's link-click records are used for click counts and recent activity. The current application records click timestamps; it does not display a visitor's identity to link owners.
 
@@ -50,7 +51,7 @@ We use information to:
 
 - Create, redirect, manage, pause, and expire temporary links.
 - Apply click limits, scheduled start times, and optional password protection.
-- Provide account registration, sign-in, email verification, password recovery, and session management.
+- Provide account registration, sign-in, email verification, password recovery, session management, and maintain a record of Terms of Service acceptance.
 - Display link activity to the person who manages a link.
 - Reply to support requests.
 - Apply rate limits, prevent abuse, protect the service, and troubleshoot errors.
