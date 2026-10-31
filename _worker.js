@@ -62,6 +62,11 @@ async function createLink(request, env) {
   }
 
   const now = Math.floor(Date.now() / 1000);
+  const startsAtValue = body.startsAt == null ? null : Number(body.startsAt);
+  const startsAt = startsAtValue == null ? null : Math.floor(startsAtValue / 1000);
+  if (startsAt !== null && (!Number.isFinite(startsAt) || startsAt <= now || startsAt > now + 2592000)) {
+    return json({ error: "Choose a future start time within the next 30 days." }, 400);
+  }
   const duration = Number(body.expiresIn);
   let expiresAt;
   if (body.expiresAt != null) {
@@ -72,12 +77,10 @@ async function createLink(request, env) {
     expiresAt = Math.floor(customExpiry / 1000);
   } else {
     if (!expiryChoices.has(duration)) return json({ error: "Choose one of the available expiry times." }, 400);
-    expiresAt = now + duration;
+    expiresAt = (startsAt ?? now) + duration;
   }
-  const startsAtValue = body.startsAt == null ? null : Number(body.startsAt);
-  const startsAt = startsAtValue == null ? null : Math.floor(startsAtValue / 1000);
-  if (startsAt !== null && (!Number.isFinite(startsAt) || startsAt <= now || startsAt > now + 2592000 || startsAt >= expiresAt)) {
-    return json({ error: "Choose a future start time before the link expiry, within 30 days." }, 400);
+  if (startsAt !== null && startsAt >= expiresAt) {
+    return json({ error: "The link must expire after its scheduled start time." }, 400);
   }
   const maxClicks = body.maxClicks == null ? null : Number(body.maxClicks);
   if (maxClicks !== null && !clickChoices.has(maxClicks)) {
@@ -89,9 +92,6 @@ async function createLink(request, env) {
   }
   const passwordSalt = password ? token(16) : null;
   const passwordHash = password ? await hashPassword(password, passwordSalt) : null;
-
-  if (link.paused_at !== null) return page("This link is paused", "The person who created this link has temporarily paused it.", 200);
-  if (link.starts_at && link.starts_at > now) return page("This link isn't active yet", "Come back when its scheduled start time has arrived.", 200);
 
   const ip = request.headers.get("CF-Connecting-IP") || "unknown";
   const ipHash = await digest(ip);
@@ -221,6 +221,8 @@ async function unlock(request, env, slug) {
   if (!link || !link.password_hash || !link.password_salt) {
     return page("This link has expired", "The UndoLink redirect is no longer active. The original destination hasn't been changed.");
   }
+  if (link.paused_at !== null) return page("This link is paused", "The person who created this link has temporarily paused it.", 200);
+  if (link.starts_at && link.starts_at > now) return page("This link isn't active yet", "Come back when its scheduled start time has arrived.", 200);
 
   const ip = request.headers.get("CF-Connecting-IP") || "unknown";
   const ipHash = await digest(ip);
@@ -243,8 +245,8 @@ async function unlock(request, env, slug) {
   if (candidateHash !== link.password_hash) return passwordPage(slug, true);
 
   const active = await env.DB.prepare(
-    "UPDATE links SET clicks=clicks+1 WHERE id=? AND disabled_at IS NULL AND expires_at>? AND (max_clicks IS NULL OR clicks<max_clicks) RETURNING id, destination_url"
-  ).bind(link.id, now).first();
+    "UPDATE links SET clicks=clicks+1 WHERE id=? AND disabled_at IS NULL AND paused_at IS NULL AND (starts_at IS NULL OR starts_at<=?) AND expires_at>? AND (max_clicks IS NULL OR clicks<max_clicks) RETURNING id, destination_url"
+  ).bind(link.id, now, now).first();
   if (!active) return page("This link has expired", "The UndoLink redirect is no longer active. The original destination hasn't been changed.");
   try {
     await env.DB.prepare("INSERT INTO link_clicks (link_id, clicked_at) VALUES (?,?)").bind(active.id, now).run();
@@ -290,8 +292,8 @@ export default {
         if (candidate.starts_at && candidate.starts_at > now) return page("This link isn't active yet", "Come back when its scheduled start time has arrived.", 200);
         if (candidate.password_hash) return passwordPage(slug);
         const row = await env.DB.prepare(
-          "UPDATE links SET clicks=clicks+1 WHERE slug=? AND disabled_at IS NULL AND expires_at>? AND (max_clicks IS NULL OR clicks<max_clicks) RETURNING id, destination_url"
-        ).bind(slug, now).first();
+          "UPDATE links SET clicks=clicks+1 WHERE slug=? AND disabled_at IS NULL AND paused_at IS NULL AND (starts_at IS NULL OR starts_at<=?) AND expires_at>? AND (max_clicks IS NULL OR clicks<max_clicks) RETURNING id, destination_url"
+        ).bind(slug, now, now).first();
         if (!row) return page("This link has expired", "The UndoLink redirect is no longer active. The original destination hasn't been changed.");
         try {
           await env.DB.prepare("INSERT INTO link_clicks (link_id, clicked_at) VALUES (?,?)")
