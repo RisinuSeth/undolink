@@ -228,7 +228,7 @@ async function auth(request, env, action) {
   } catch { return json({ error: "Enter a valid email and password." }, 400); }
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body.password === "string" ? body.password : "";
-  if (!/^[^\s@]{1,64}@[^\\s@]{1,190}\.[^\\s@]{2,30}$/.test(email) || password.length < 10 || password.length > 128) {
+  if (!/^[^\s@]{1,64}@[a-z0-9-]{1,190}(?:\.[a-z0-9-]{2,30})+$/.test(email) || password.length < 10 || password.length > 128) || password.length < 10 || password.length > 128) {
     return json({ error: "Use a valid email and a password between 10 and 128 characters." }, 400);
   }
   let user;
