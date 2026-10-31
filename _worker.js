@@ -63,7 +63,17 @@ async function createLink(request, env) {
   }
 
   const duration = Number(body.expiresIn);
-  if (!expiryChoices.has(duration)) return json({ error: "Choose one of the available expiry times." }, 400);
+  let expiresAt;
+  if (body.expiresAt != null) {
+    const customExpiry = Number(body.expiresAt);
+    if (!Number.isFinite(customExpiry) || customExpiry <= now * 1000 || customExpiry > (now + 2592000) * 1000) {
+      return json({ error: "Choose an expiry date within the next 30 days." }, 400);
+    }
+    expiresAt = Math.floor(customExpiry / 1000);
+  } else {
+    if (!expiryChoices.has(duration)) return json({ error: "Choose one of the available expiry times." }, 400);
+    expiresAt = now + duration;
+  }
   const maxClicks = body.maxClicks == null ? null : Number(body.maxClicks);
   if (maxClicks !== null && !clickChoices.has(maxClicks)) {
     return json({ error: "Choose a valid click limit." }, 400);
@@ -92,7 +102,6 @@ async function createLink(request, env) {
   }
 
   const manageKey = token(32);
-  const expiresAt = now + duration;
   const manageHash = await digest(manageKey);
   let slug = null;
   const candidates = customSlug ? [customSlug] : [token(6).slice(0, 10), token(6).slice(0, 10), token(6).slice(0, 10)];
