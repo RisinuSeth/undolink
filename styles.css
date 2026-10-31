@@ -124,3 +124,21 @@ footer span:first-child{font-weight:700;color:var(--ink);white-space:nowrap}
 .account-switch-copy button{border:0;background:none;color:var(--orange-dark);font-weight:700;cursor:pointer;padding:0}
 .account-footnote{font-size:10px;line-height:1.6;color:#8a8a84;margin:18px 0 0;padding-top:14px;border-top:1px solid var(--soft)}
 @media(max-width:600px){.account-actions{gap:8px}.account-actions .top-note{display:none}.account-dialog{padding:28px 22px}}
+
+.account-text-button{display:block;border:0;background:none;color:var(--orange-dark);font-size:11px;font-weight:700;padding:8px 0;cursor:pointer}
+.account-text-button:hover{text-decoration:underline}
+.settings-dialog{max-height:min(86vh,850px);overflow:auto}
+.settings-dialog h3{font:700 14px "Plus Jakarta Sans",sans-serif;margin:0 0 14px}
+.verification-status{display:inline-flex;padding:7px 10px;background:var(--paper);font-size:11px;color:#38734a;margin:0 0 22px}
+.settings-form{border-top:1px solid var(--line);padding-top:22px}
+.settings-form .account-input{margin-bottom:13px}
+.settings-form .create-button{margin-top:8px}
+.sessions-panel{border-top:1px solid var(--line);padding-top:22px;margin-top:24px}
+.settings-hint{font-size:11px;color:var(--muted);line-height:1.5;margin:0 0 12px}
+.session-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--soft)}
+.session-details{font-size:11px;line-height:1.5;color:var(--muted)}
+.session-details strong{display:block;color:var(--ink)}
+.session-current{font-size:10px;color:#38734a;font-weight:700}
+.session-revoke{border:1px solid var(--line);background:#fff;padding:7px 9px;font-size:10px;cursor:pointer}
+.session-revoke:hover{border-color:var(--orange);color:var(--orange-dark)}
+@media(max-width:600px){.settings-dialog{padding:28px 22px}}
