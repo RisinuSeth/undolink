@@ -1,0 +1,8 @@
+name = "undolink"
+compatibility_date = "2026-10-31"
+pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "undolink-db"
+database_id = "14506f21-0d1c-4733-8e06-ebb6807d85b4"
