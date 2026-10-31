@@ -52,6 +52,8 @@ const accountClose=document.querySelector("#account-close");
 const accountForm=document.querySelector("#account-form");
 const accountEmail=document.querySelector("#account-email");
 const accountPassword=document.querySelector("#account-password");
+const termsConsent=document.querySelector("#terms-consent");
+const termsAccepted=document.querySelector("#terms-accepted");
 const accountSubmit=document.querySelector("#account-submit");
 const accountMessage=document.querySelector("#account-message");
 const accountSwitch=document.querySelector("#account-switch");
@@ -409,6 +411,9 @@ function updateAccountMode(){
   accountSwitchLabel.textContent=signup?"Already have an account?":"New to UndoLink?";
   accountSwitch.textContent=signup?"Log in":"Create an account";
   accountForgot.hidden=!login;
+  termsConsent.hidden=!signup;
+  termsAccepted.required=signup;
+  if(!signup)termsAccepted.checked=false;
 }
 async function syncAccountLinks(){
   if(!currentUser){accountItems=[];renderRecent();return}
@@ -458,6 +463,9 @@ accountForm.addEventListener("submit",async event=>{
   accountMessage.textContent="";
   const email=accountEmail.value.trim();
   const password=accountPassword.value;
+  if(accountMode==="signup"&&!termsAccepted.checked){
+    accountMessage.textContent="Please agree to the Terms of Service to create an account.";return;
+  }
   if((accountMode==="signup"||accountMode==="login"||accountMode==="reset")&&password.length<10){
     accountMessage.textContent="Use a password with at least 10 characters.";return;
   }
@@ -483,7 +491,7 @@ accountForm.addEventListener("submit",async event=>{
       accountMessage.textContent="Password reset. You can now log in.";
       return;
     }
-    const response=await fetch("/api/auth/"+accountMode,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
+    const response=await fetch("/api/auth/"+accountMode,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password,...(accountMode==="signup"?{acceptedTerms:true,termsVersion:"2026-10-31"}:{})})});
     const data=await response.json();
     if(!response.ok){
       if(accountMode==="signup"&&response.status===503)accountResend.hidden=false;
