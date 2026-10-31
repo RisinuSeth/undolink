@@ -1,15 +1,18 @@
 # UndoLink Privacy Policy — Draft for Review
 
 **Draft date:** October 31, 2026  
-**Service:** UndoLink (https://undolink.pages.dev)
+**Service:** UndoLink (https://undolink.pages.dev)  
+**Operator:** Independently operated by an individual (not presented as a registered company).
 
-> **Review note:** This is a working draft based on the current application code. It is not legal advice and is not ready to be treated as a final legal policy. The service operator and a parent or legal guardian should review it, confirm the details, and obtain qualified local advice where appropriate before publishing it.
+> **Review note:** This is a working draft based on the current application code. It is not legal advice and is not ready to be treated as a final legal policy. The operator should confirm the details and obtain qualified local advice where appropriate before publishing it.
 
 ## 1. About this policy
 
 This policy explains what information UndoLink processes when you use the website, create temporary links, use an account, or contact support.
 
 UndoLink is a link-management service. It lets you create redirect links with settings such as expiry times, click limits, scheduled start times, and optional passwords.
+
+UndoLink is independently operated by an individual. It is not being presented as a company or incorporated entity.
 
 ## 2. Information we process
 
@@ -107,6 +110,8 @@ For privacy questions or requests, contact UndoLink through the support page:
 
 https://undolink.pages.dev/support.html
 
+You can also contact the operator through **undolink.support@gmail.com**.
+
 ---
 
-**Items to confirm before publication:** the legal name and contact details of the service operator; the applicable governing jurisdiction; provider retention and international-transfer details; whether account deletion requests can be reliably fulfilled; and whether the policy needs additional notices under the laws that apply to the operator and users.
+**Items to confirm before publication:** the operator's legal name and the appropriate way to disclose it; the applicable governing jurisdiction; provider retention and international-transfer details; whether account deletion requests can be reliably fulfilled; and whether the policy needs additional notices under the laws that apply to the operator and users.
