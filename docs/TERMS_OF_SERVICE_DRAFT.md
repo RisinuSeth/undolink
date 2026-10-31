@@ -1,15 +1,16 @@
 # UndoLink Terms of Service — Draft for Review
 
 **Draft date:** October 31, 2026  
-**Service:** UndoLink (https://undolink.pages.dev)
+**Service:** UndoLink (https://undolink.pages.dev)  
+**Operator:** Independently operated by an individual (not presented as a registered company).
 
-> **Review note:** This is a working draft based on the current service. It is not legal advice and is not ready to be treated as a final legal agreement. The service operator and a parent or legal guardian should review it, confirm the details, and obtain qualified local advice where appropriate before publishing it.
+> **Review note:** This is a working draft based on the current service. It is not legal advice and is not ready to be treated as a final legal agreement. The operator should confirm the details and obtain qualified local advice where appropriate before publishing it.
 
 ## 1. Using UndoLink
 
 UndoLink lets you create and manage temporary redirect links. By accessing or using the service, you agree to follow these terms and applicable laws.
 
-If you are not legally able to agree to online service terms where you live, you may use UndoLink only with the involvement and permission of a parent or legal guardian.
+UndoLink is independently operated by an individual and is not being presented as a company or incorporated entity.
 
 ## 2. What the service does
 
@@ -95,6 +96,8 @@ Questions about these terms can be sent through the UndoLink support page:
 
 https://undolink.pages.dev/support.html
 
+You can also contact the operator through **undolink.support@gmail.com**.
+
 ---
 
-**Items to confirm before publication:** the legal name and status of the service operator; governing law and dispute process; age and parental-consent requirements; enforceability of warranty and liability language; suspension/termination procedures; and any consumer-protection obligations that apply.
+**Items to confirm before publication:** the operator's legal name and the appropriate way to disclose it; governing law and dispute process; enforceability of warranty and liability language; suspension/termination procedures; and any consumer-protection obligations that apply.
