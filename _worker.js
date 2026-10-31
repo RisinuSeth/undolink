@@ -34,7 +34,7 @@ const digest = async value => {
 const expiryChoices = new Set([900, 3600, 86400, 604800, 2592000]);
 const clickChoices = new Set([1, 5, 10, 25, 100]);
 const slugPattern = /^[a-z0-9](?:[a-z0-9-]{2,22}[a-z0-9])$/;
-const reservedSlugs = new Set(["api","admin","assets","favicon","robots","privacy","terms","help","create","login","signup"]);
+const reservedSlugs = new Set(["api","admin","assets","favicon","robots","privacy","terms","help","support","create","login","signup"]);
 
 
 const authCookieName = "undolink_session";
@@ -601,6 +601,13 @@ async function unlock(request, env, slug) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    if (url.pathname === "/support" && request.method === "GET") {
+      return env.ASSETS.fetch(new Request(new URL("/support.html", request.url), {
+        method: "GET",
+        headers: request.headers
+      }));
+    }
 
     if (url.pathname === "/api/auth/me" && request.method === "GET") {
       try { return await auth(request, env, "me"); }
