@@ -23,7 +23,8 @@ const digest = async value => {
 };
 const expiryChoices = new Set([900, 3600, 86400, 604800, 2592000]);
 const clickChoices = new Set([1, 5, 10, 25, 100]);
-const slugPattern = /^[a-f0-9]{8}(?:[a-f0-9]{2})?$/;
+const slugPattern = /^[a-z0-9](?:[a-z0-9-]{2,22}[a-z0-9])$/;
+const reservedSlugs = new Set(["api","admin","assets","favicon","robots","privacy","terms","help","create","login","signup"]);
 
 async function createLink(request, env) {
   const contentLength = Number(request.headers.get("content-length") || 0);
@@ -75,13 +76,18 @@ async function createLink(request, env) {
     await env.DB.prepare("DELETE FROM rate_limits WHERE window_start < ?").bind(now - 172800).run();
   }
 
+  const customSlug = typeof body.customSlug === "string" ? body.customSlug.trim().toLowerCase() : "";
+  if (customSlug && (!slugPattern.test(customSlug) || reservedSlugs.has(customSlug))) {
+    return json({ error: "Choose a custom slug with 4–24 lowercase letters, numbers or hyphens. Avoid reserved words." }, 400);
+  }
+
   const manageKey = token(32);
   const expiresAt = now + duration;
   const manageHash = await digest(manageKey);
   let slug = null;
+  const candidates = customSlug ? [customSlug] : [token(6).slice(0, 10), token(6).slice(0, 10), token(6).slice(0, 10)];
 
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const candidate = token(6).slice(0, 10);
+  for (const candidate of candidates) {
     try {
       await env.DB.prepare(
         "INSERT INTO links (id,slug,destination_url,created_at,expires_at,max_clicks,manage_token_hash) VALUES (?,?,?,?,?,?,?)"
@@ -89,9 +95,10 @@ async function createLink(request, env) {
       slug = candidate;
       break;
     } catch (error) {
-      if (attempt === 2) throw error;
+      if (customSlug) return json({ error: "That custom slug is already taken. Try another one." }, 409);
     }
   }
+  if (!slug) throw new Error("Could not allocate a unique link slug.");
 
   return json({ slug, url: new URL("/" + slug, request.url).href, expiresAt: expiresAt * 1000, manageKey });
 }
@@ -148,7 +155,7 @@ export default {
       catch { return json({ error: "We couldn't create that link. Please try again." }, 500); }
     }
 
-    const managementMatch = url.pathname.match(/^\/api\/links\/([a-f0-9]{8}(?:[a-f0-9]{2})?)$/);
+    const managementMatch = url.pathname.match(/^\/api\/links\/([a-z0-9](?:[a-z0-9-]{2,22}[a-z0-9]))$/);
     if (managementMatch && (request.method === "GET" || request.method === "PATCH" || request.method === "DELETE")) {
       try { return await manage(request, env, managementMatch[1]); }
       catch { return json({ error: "We couldn't update that link. Please try again." }, 500); }
