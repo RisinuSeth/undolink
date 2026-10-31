@@ -37,15 +37,14 @@ const slugPattern = /^[a-z0-9](?:[a-z0-9-]{2,22}[a-z0-9])$/;
 const reservedSlugs = new Set(["api","admin","assets","favicon","robots","privacy","terms","help","create","login","signup"]);
 
 async function createLink(request, env) {
-  const contentLength = Number(request.headers.get("content-length") || 0);
-  if (contentLength > 4096) return json({ error: "That request is too large." }, 413);
+  let rawBody;
+  try { rawBody = await request.text(); }
+  catch { return json({ error: "Please send a valid link request." }, 400); }
+  if (rawBody.length > 4096) return json({ error: "That request is too large." }, 413);
 
   let body;
-  try {
-    body = await request.json();
-  } catch {
-    return json({ error: "Please send a valid link request." }, 400);
-  }
+  try { body = JSON.parse(rawBody); }
+  catch { return json({ error: "Please send a valid link request." }, 400); }
 
   if (!body || typeof body.destination !== "string" || body.destination.length > 2048) {
     return json({ error: "Enter a valid destination URL." }, 400);
