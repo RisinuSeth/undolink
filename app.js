@@ -1,6 +1,7 @@
 const form=document.querySelector("#create-form");
 const destination=document.querySelector("#destination");
 const expiry=document.querySelector("#expiry");
+const customExpiry=document.querySelector("#custom-expiry");
 const limit=document.querySelector("#limit");
 const customSlug=document.querySelector("#custom-slug");
 const linkPassword=document.querySelector("#link-password");
@@ -196,12 +197,18 @@ form.addEventListener("submit",async event=>{
   button.disabled=true;
   button.querySelector("span").textContent="Creating…";
   try{
+    const customExpiryMs=expiry.value==="custom"?Date.parse(customExpiry.value):null;
+    if(expiry.value==="custom"&&(!Number.isFinite(customExpiryMs)||customExpiryMs<=Date.now())){
+      message.textContent="Choose a future expiry date and time.";
+      return;
+    }
     const response=await fetch("/api/links",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
         destination:url.href,
-        expiresIn:Number(expiry.value),
+        expiresIn:expiry.value==="custom"?null:Number(expiry.value),
+        expiresAt:customExpiryMs,
         maxClicks:limit.value?Number(limit.value):null,
         customSlug:customSlug.value.trim().toLowerCase(),
         password:linkPassword.value
@@ -230,6 +237,10 @@ form.addEventListener("submit",async event=>{
     button.disabled=false;
     button.querySelector("span").textContent="Create temporary link";
   }
+});
+expiry.addEventListener("change",()=>{
+  customExpiry.hidden=expiry.value!=="custom";
+  if(expiry.value==="custom")customExpiry.focus();
 });
 copyButton.addEventListener("click",()=>activeLink&&copy(activeLink.url));
 qrButton.addEventListener("click",()=>{
