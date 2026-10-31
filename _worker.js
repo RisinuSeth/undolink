@@ -153,10 +153,26 @@ async function manage(request, env, slug) {
   if (request.method === "PATCH") {
     let body;
     try { body = await request.json(); } catch { return json({ error: "Invalid request." }, 400); }
-    if (body.disabled !== true) return json({ error: "Unsupported action." }, 400);
-    await env.DB.prepare("UPDATE links SET disabled_at=? WHERE slug=? AND disabled_at IS NULL")
-      .bind(Math.floor(Date.now() / 1000), slug).run();
-    return json({ ok: true });
+
+    if (body.disabled === true) {
+      await env.DB.prepare("UPDATE links SET disabled_at=? WHERE slug=? AND disabled_at IS NULL")
+        .bind(Math.floor(Date.now() / 1000), slug).run();
+      return json({ ok: true });
+    }
+
+    const extendBy = Number(body.extendBy);
+    if ([3600, 86400, 604800].includes(extendBy)) {
+      const now = Math.floor(Date.now() / 1000);
+      const current = await env.DB.prepare("SELECT expires_at, disabled_at FROM links WHERE slug=?").bind(slug).first();
+      if (!current || current.disabled_at !== null) return json({ error: "This link cannot be extended." }, 409);
+      const nextExpiry = Math.max(current.expires_at, now) + extendBy;
+      if (nextExpiry > now + 2592000) return json({ error: "Links can only be extended up to 30 days ahead." }, 400);
+      await env.DB.prepare("UPDATE links SET expires_at=? WHERE slug=? AND disabled_at IS NULL")
+        .bind(nextExpiry, slug).run();
+      return json({ ok: true, expiresAt: nextExpiry * 1000 });
+    }
+
+    return json({ error: "Unsupported action." }, 400);
   }
 
   if (request.method === "DELETE") {
