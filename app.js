@@ -218,7 +218,11 @@ async function disableLink(item){
     const data=await response.json();
     if(!response.ok)throw new Error(data.error||"Could not disable link");
     saveLinks(readLinks().map(link=>link.slug===item.slug?{...link,disabled:true}:link));
-    renderRecent();
+    linkSearch.addEventListener("input",renderRecent);
+linkFilter.addEventListener("change",renderRecent);
+linkSort.addEventListener("change",renderRecent);
+bulkCreate.addEventListener("click",createBulkLinks);
+renderRecent();
     notify("Link disabled");
   }catch(error){notify(error.message||"Could not disable link")}
 }
