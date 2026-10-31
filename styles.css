@@ -4,8 +4,8 @@ html{scroll-behavior:smooth}
 body{margin:0;background:var(--white);color:var(--ink);font-family:"DM Sans",Arial,sans-serif;-webkit-font-smoothing:antialiased}
 button,input,select{font:inherit}
 .topbar{height:76px;padding:0 max(6vw,24px);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
-.brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);font:800 20px "Manrope",sans-serif;letter-spacing:-.8px}
-.brand-mark{display:grid;place-items:center;width:29px;height:29px;background:var(--orange);color:white;font:800 19px "Manrope",sans-serif}
+.brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);font:700 19px "Plus Jakarta Sans",sans-serif;letter-spacing:-.9px}
+.brand-mark{display:block;width:29px;height:29px;color:var(--orange);flex:none}
 .top-note{font-size:12px;color:var(--muted);letter-spacing:.02em}
 main{width:min(760px,calc(100% - 40px));margin:0 auto}
 .intro{padding:76px 0 39px}
