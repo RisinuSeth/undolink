@@ -688,10 +688,6 @@ export default {
       catch { return json({ error: "We couldn't update that link. Please try again." }, 500); }
     }
 
-    if (url.pathname === "/support" && request.method === "GET") {
-      return env.ASSETS.fetch(new Request(new URL("/support.html", url), request));
-    }
-
     if (request.method === "GET" && slugPattern.test(url.pathname.slice(1)) && url.pathname.length > 1 && !url.pathname.slice(1).includes("/")) {
       const slug = url.pathname.slice(1);
       const now = Math.floor(Date.now() / 1000);
