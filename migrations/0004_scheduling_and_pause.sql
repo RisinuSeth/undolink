@@ -1,0 +1,2 @@
+ALTER TABLE links ADD COLUMN starts_at INTEGER;
+ALTER TABLE links ADD COLUMN paused_at INTEGER;
