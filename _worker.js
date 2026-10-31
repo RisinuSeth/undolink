@@ -131,6 +131,22 @@ async function auth(request, env, action) {
     headers: { ...securityHeaders, "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "set-cookie": cookie }
   });
 }
+
+async function claimAccountLink(request, env) {
+  const session = await getSession(request, env);
+  if (!session) return json({ error: "Please log in first." }, 401);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "Invalid request." }, 400); }
+  const slug = typeof body.slug === "string" ? body.slug : "";
+  const manageKey = typeof body.manageKey === "string" ? body.manageKey : "";
+  if (!slugPattern.test(slug) || !/^[a-f0-9]{64}$/.test(manageKey)) return json({ error: "Invalid link details." }, 400);
+  const result = await env.DB.prepare(
+    "UPDATE links SET user_id=? WHERE slug=? AND manage_token_hash=? AND (user_id IS NULL OR user_id=?)"
+  ).bind(session.userId, slug, await digest(manageKey), session.userId).run();
+  if (!result.meta?.changes) return json({ error: "This link could not be added to your account." }, 409);
+  return json({ ok: true });
+}
+
 async function accountLinks(request, env) {
   const session = await getSession(request, env);
   if (!session) return json({ error: "Please log in to view your links." }, 401);
@@ -391,6 +407,10 @@ export default {
     if (url.pathname === "/api/auth/logout" && request.method === "POST") {
       try { return await auth(request, env, "logout"); }
       catch { return json({ error: "We couldn't log you out right now." }, 503); }
+    }
+    if (url.pathname === "/api/account/claim" && request.method === "POST") {
+      try { return await claimAccountLink(request, env); }
+      catch { return json({ error: "We couldn't add that link to your account." }, 503); }
     }
     if (url.pathname === "/api/account/links" && request.method === "GET") {
       try { return await accountLinks(request, env); }
