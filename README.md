@@ -18,7 +18,9 @@ Temporary links that stop redirecting when their time is up.
 - QR code generation and PNG download for created links.
 - Only HTTP and HTTPS destinations are accepted; embedded URL credentials are rejected.
 - Basic per-IP creation rate limiting (hashed IP identifier; 30 creations per hour).
-- Browser-side link dashboard with search, status filters, expiry sorting, summary counts and management actions.
+- Browser-side guest dashboard with search, status filters, expiry sorting, summary counts and management actions.
+- Optional email/password accounts with secure, HttpOnly session cookies and PBKDF2-SHA-256 password hashing.
+- Account-owned links are stored in D1 and can be loaded from another device after login; existing guest links can be claimed using their private management keys.
 - Bulk creation of up to 10 links per batch, with one expiry setting and individual management keys.
 
 ## Security and privacy notes
@@ -27,9 +29,11 @@ Temporary links that stop redirecting when their time is up.
 - Link passwords are never stored in plain text. Password verification uses PBKDF2-SHA-256 with a unique random salt and 120,000 iterations. Unlock attempts are rate-limited per IP hash and link.
 - Expiry disables the UndoLink redirect. It does not delete, revoke or modify the original destination URL. Anyone who already knows the destination can still visit it directly.
 - Rate-limit identifiers are hashed, and old rate-limit windows are periodically cleaned up.
+- Account passwords are salted and hashed with PBKDF2-SHA-256 (210,000 iterations); sessions use random bearer tokens stored only as SHA-256 hashes and are delivered in Secure, HttpOnly, SameSite=Lax cookies.
+- Account authentication is early access: email verification and password reset are not implemented yet. Users should only register with an email they can retain access to and must keep their password safe.
 
 ## Database
-The D1 binding is named `DB`. The initial schema is in `migrations/0001_init.sql`; click analytics are in `migrations/0002_click_analytics.sql`; password protection is in `migrations/0003_password_protection.sql`.
+The D1 binding is named `DB`. The schema migrations are `0001_init.sql` (links), `0002_click_analytics.sql` (click analytics), `0003_password_protection.sql` (password-protected links), `0004_scheduling_and_pause.sql` (scheduled and paused links), and `0005_accounts.sql` (users, sessions and link ownership).
 
 ## Local development
 1. Install Node.js and Wrangler.
@@ -38,4 +42,5 @@ The D1 binding is named `DB`. The initial schema is in `migrations/0001_init.sql
    `npx wrangler d1 execute undolink-db --local --file=migrations/0002_click_analytics.sql`
    `npx wrangler d1 execute undolink-db --local --file=migrations/0003_password_protection.sql`
    `npx wrangler d1 execute undolink-db --local --file=migrations/0004_scheduling_and_pause.sql`
+   `npx wrangler d1 execute undolink-db --local --file=migrations/0005_accounts.sql`
 3. Run `npx wrangler pages dev .`.
