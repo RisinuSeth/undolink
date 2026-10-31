@@ -18,7 +18,7 @@
 <body>
   <header class="topbar">
     <a class="brand" href="/" aria-label="UndoLink home"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" fill="currentColor"/><g transform="rotate(-45 16 16)" fill="none" stroke="#fff" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5v7.5c0 4.2 2.8 7 7 7s7-2.8 7-7V5"/><path d="M9 27v-7.5c0-4.2 2.8-7 7-7s7 2.8 7 7V27"/></g></svg><span>UndoLink</span></a>
-    <div class="account-actions"><span class="top-note" id="account-label">Guest mode</span><button class="account-button" id="account-button" type="button">Log in</button></div>
+    <div class="account-actions"><span class="top-note" id="account-label">Guest mode</span><button class="account-button" id="account-settings-button" type="button" hidden>Settings</button><button class="account-button" id="account-button" type="button">Log in</button></div>
   </header>
 
   <main>
@@ -159,11 +159,11 @@
         <input class="account-input" id="account-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" required>
         <label class="field-label" for="account-password">Password</label>
         <input class="account-input" id="account-password" name="password" type="password" autocomplete="current-password" minlength="10" maxlength="128" placeholder="At least 10 characters" required>
-        <p class="account-message" id="account-message" role="status" aria-live="polite"></p>
+        <p class="account-message" id="account-message" role="status" aria-live="polite"></p><button class="account-text-button" id="account-forgot" type="button">Forgot password?</button><button class="account-text-button" id="account-resend" type="button" hidden>Resend verification email</button>
         <button class="create-button" id="account-submit" type="submit"><span>Log in</span><span aria-hidden="true">↗</span></button>
       </form>
-      <p class="account-switch-copy"><span id="account-switch-label">New to UndoLink?</span> <button id="account-switch" type="button">Create an account</button></p>
-      <p class="account-footnote">Early access: use an email you can keep access to. Password recovery and email verification are not available yet.</p>
+      <p class="account-switch-copy" id="account-switch-row"><span id="account-switch-label">New to UndoLink?</span> <button id="account-switch" type="button">Create an account</button></p>
+      <p class="account-footnote">Your account is protected with a private session. Never share your password or verification links.</p>
     </section>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
