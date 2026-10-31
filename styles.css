@@ -22,6 +22,13 @@ input,select{border:0;outline:0;background:transparent;color:var(--ink);width:10
 input{height:100%;font-size:14px;padding:0 14px 0 0}
 input::placeholder{color:#aaa}
 .field-hint{font-size:11px;color:var(--muted);margin:8px 0 24px}
+.custom-slug-field{margin:-2px 0 24px}
+.custom-slug-field .field-hint{margin:8px 0 0}
+.slug-input{height:48px;border:1px solid #cfcfcb;display:flex;align-items:center;min-width:0}
+.slug-input:focus-within{border-color:var(--orange)}
+.slug-input>span{padding-left:13px;color:var(--muted);font-size:12px;white-space:nowrap}
+.slug-input input{height:100%;padding:0 12px;font-size:13px;min-width:0}
+
 .settings-row{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .setting select{height:48px;border:1px solid #cfcfcb;padding:0 12px;font-size:13px;border-radius:0;cursor:pointer}
 .optional{font-size:9px;color:#969690;letter-spacing:.08em;font-weight:600}
