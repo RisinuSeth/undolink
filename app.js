@@ -2,6 +2,7 @@ const form=document.querySelector("#create-form");
 const destination=document.querySelector("#destination");
 const expiry=document.querySelector("#expiry");
 const customExpiry=document.querySelector("#custom-expiry");
+const startAt=document.querySelector("#start-at");
 const limit=document.querySelector("#limit");
 const customSlug=document.querySelector("#custom-slug");
 const linkPassword=document.querySelector("#link-password");
@@ -74,7 +75,7 @@ function renderRecent(){
     a.target="_blank";
     a.rel="noopener noreferrer";
     const p=document.createElement("p");
-    p.textContent=item.disabled?"Disabled":(expired?"Expired ":"Expires ")+niceDate(item.expiresAt);
+    p.textContent=item.disabled?"Disabled":item.paused?"Paused":(item.scheduledAt&&Number(item.scheduledAt)>Date.now()?"Starts "+niceDate(item.scheduledAt)+" · Expires ":""+(expired?"Expired ":"Expires "))+niceDate(item.expiresAt);
     main.append(a,p);
     const actions=document.createElement("div");
     actions.className="recent-actions";
@@ -99,12 +100,22 @@ function renderRecent(){
       actions.append(disable);
     }
     if(item.manageKey&&!item.disabled){
+      if(!expired||item.paused){
+        const pause=document.createElement("button");
+        pause.className="small-action";
+        pause.type="button";
+        pause.textContent=item.paused?"Resume":"Pause";
+        pause.addEventListener("click",()=>togglePause(item));
+        actions.append(pause);
+      }
       const extend=document.createElement("button");
       extend.className="small-action";
       extend.type="button";
       extend.textContent="Extend 24h";
       extend.addEventListener("click",()=>extendLink(item));
       actions.append(extend);
+    }
+    if(item.manageKey){
       const remove=document.createElement("button");
       remove.className="small-action";
       remove.type="button";
@@ -135,8 +146,9 @@ async function showStats(item,row,button){
     const summary=document.createElement("p");
     summary.textContent=data.clicks+" click"+(data.clicks===1?"":"s")+
       (data.maxClicks?" · limit "+data.maxClicks:" · no click limit")+
-      " · "+(data.disabled?"disabled":Number(data.expiresAt)<=Date.now()?"expired":"active")+
-      (data.passwordProtected?" · password protected":"");
+      " · "+(data.disabled?"disabled":data.paused?"paused":Number(data.expiresAt)<=Date.now()?"expired":data.scheduledAt&&Number(data.scheduledAt)>Date.now()?"scheduled":"active")+
+      (data.passwordProtected?" · password protected":"")+
+      (data.scheduledAt?" · starts "+niceDate(data.scheduledAt):"");
     panel.append(heading,summary);
     if(data.recentClicks&&data.recentClicks.length){
       const label=document.createElement("p");
@@ -173,6 +185,21 @@ async function disableLink(item){
     renderRecent();
     notify("Link disabled");
   }catch(error){notify(error.message||"Could not disable link")}
+}
+async function togglePause(item){
+  const paused=!item.paused;
+  try{
+    const response=await fetch("/api/links/"+encodeURIComponent(item.slug),{
+      method:"PATCH",
+      headers:{"Authorization":"Bearer "+item.manageKey,"Content-Type":"application/json"},
+      body:JSON.stringify({paused})
+    });
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||"Could not update link");
+    saveLinks(readLinks().map(link=>link.slug===item.slug?{...link,paused:data.paused}:link));
+    renderRecent();
+    notify(paused?"Link paused":"Link resumed");
+  }catch(error){notify(error.message||"Could not update link")}
 }
 async function extendLink(item){
   try{
@@ -221,9 +248,19 @@ form.addEventListener("submit",async event=>{
   button.disabled=true;
   button.querySelector("span").textContent="Creating…";
   try{
+    const startAtMs=startAt.value?Date.parse(startAt.value):null;
+    if(startAt.value&&(!Number.isFinite(startAtMs)||startAtMs<=Date.now()||startAtMs>Date.now()+30*86400000)){
+      message.textContent="Choose a future start time within the next 30 days.";
+      return;
+    }
     const customExpiryMs=expiry.value==="custom"?Date.parse(customExpiry.value):null;
     if(expiry.value==="custom"&&(!Number.isFinite(customExpiryMs)||customExpiryMs<=Date.now())){
       message.textContent="Choose a future expiry date and time.";
+      return;
+    }
+    const effectiveExpiry=expiry.value==="custom"?customExpiryMs:(startAtMs||Date.now())+Number(expiry.value)*1000;
+    if(startAtMs&&startAtMs>=effectiveExpiry){
+      message.textContent="The expiry must be after the scheduled start time.";
       return;
     }
     const response=await fetch("/api/links",{
@@ -233,6 +270,7 @@ form.addEventListener("submit",async event=>{
         destination:url.href,
         expiresIn:expiry.value==="custom"?null:Number(expiry.value),
         expiresAt:customExpiryMs,
+        startsAt:startAtMs,
         maxClicks:limit.value?Number(limit.value):null,
         customSlug:customSlug.value.trim().toLowerCase(),
         password:linkPassword.value
@@ -246,7 +284,7 @@ form.addEventListener("submit",async event=>{
     expiryNote.textContent="This link expires "+niceDate(data.expiresAt)+". After that, the UndoLink redirect will stop working.";
     result.hidden=false;
     const items=readLinks();
-    items.unshift({slug:data.slug,url:data.url,expiresAt:data.expiresAt,manageKey:data.manageKey});
+    items.unshift({slug:data.slug,url:data.url,expiresAt:data.expiresAt,scheduledAt:startAtMs,manageKey:data.manageKey});
     const saved=saveLinks(items.slice(0,30));
     renderRecent();
     if(!saved){
@@ -256,6 +294,7 @@ form.addEventListener("submit",async event=>{
     form.reset();
     expiry.value="3600";
     customExpiry.hidden=true;
+    startAt.value="";
     result.scrollIntoView({behavior:"smooth",block:"nearest"});
   }catch(error){message.textContent=error.message||"Something went wrong. Please try again."}
   finally{
