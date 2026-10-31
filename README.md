@@ -18,7 +18,8 @@ Temporary links that stop redirecting when their time is up.
 - QR code generation and PNG download for created links.
 - Only HTTP and HTTPS destinations are accepted; embedded URL credentials are rejected.
 - Basic per-IP creation rate limiting (hashed IP identifier; 30 creations per hour).
-- Browser-side recent-link list with copy, disable, delete and stats actions.
+- Browser-side link dashboard with search, status filters, expiry sorting, summary counts and management actions.
+- Bulk creation of up to 10 links per batch, with one expiry setting and individual management keys.
 
 ## Security and privacy notes
 - Management keys are generated randomly; only their SHA-256 hashes are stored in D1. The browser stores the management key locally so it can manage links. Anyone with access to that browser profile may be able to manage those links.
