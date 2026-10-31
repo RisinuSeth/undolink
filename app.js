@@ -74,7 +74,7 @@ function renderRecent(){
     a.target="_blank";
     a.rel="noopener noreferrer";
     const p=document.createElement("p");
-    p.textContent=(expired?"Expired ":"Expires ")+niceDate(item.expiresAt);
+    p.textContent=item.disabled?"Disabled":(expired?"Expired ":"Expires ")+niceDate(item.expiresAt);
     main.append(a,p);
     const actions=document.createElement("div");
     actions.className="recent-actions";
@@ -90,7 +90,7 @@ function renderRecent(){
     cp.textContent="Copy";
     cp.addEventListener("click",()=>copy(item.url));
     actions.append(cp);
-    if(!expired&&item.manageKey){
+    if(!expired&&!item.disabled&&item.manageKey){
       const disable=document.createElement("button");
       disable.className="small-action";
       disable.type="button";
@@ -98,7 +98,7 @@ function renderRecent(){
       disable.addEventListener("click",()=>disableLink(item));
       actions.append(disable);
     }
-    if(item.manageKey){
+    if(item.manageKey&&!item.disabled){
       const extend=document.createElement("button");
       extend.className="small-action";
       extend.type="button";
@@ -169,7 +169,7 @@ async function disableLink(item){
     });
     const data=await response.json();
     if(!response.ok)throw new Error(data.error||"Could not disable link");
-    saveLinks(readLinks().filter(link=>link.slug!==item.slug));
+    saveLinks(readLinks().map(link=>link.slug===item.slug?{...link,disabled:true}:link));
     renderRecent();
     notify("Link disabled");
   }catch(error){notify(error.message||"Could not disable link")}
@@ -208,6 +208,9 @@ form.addEventListener("submit",async event=>{
   event.preventDefault();
   message.textContent="";
   result.hidden=true;
+  qrPanel.hidden=true;
+  qrDownload.hidden=true;
+  qrButton.textContent="Show QR code";
   let url;
   try{url=new URL(destination.value.trim())}
   catch{message.textContent="Enter a valid destination URL.";return}
