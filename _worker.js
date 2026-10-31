@@ -82,6 +82,9 @@ async function createLink(request, env) {
   if (startsAt !== null && startsAt >= expiresAt) {
     return json({ error: "The link must expire after its scheduled start time." }, 400);
   }
+  if (expiresAt > now + 2592000) {
+    return json({ error: "Links can only be scheduled and kept active within a 30-day window." }, 400);
+  }
   const maxClicks = body.maxClicks == null ? null : Number(body.maxClicks);
   if (maxClicks !== null && !clickChoices.has(maxClicks)) {
     return json({ error: "Choose a valid click limit." }, 400);
