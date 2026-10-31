@@ -172,15 +172,19 @@ async function auth(request, env, action) {
     return json({ ok: true });
   }
   if (action === "resend") {
-    const session = await getSession(request, env);
-    if (!session) return json({ error: "Log in to request a verification email." }, 401);
     if (await authRateLimited(request, env, action)) return json({ error: "Too many requests. Try again later." }, 429);
-    const user = await env.DB.prepare("SELECT email,email_verified_at FROM users WHERE id=?").bind(session.userId).first();
-    if (!user) return json({ error: "Account not found." }, 404);
-    if (user.email_verified_at) return json({ ok: true, message: "Your email is already verified." });
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "Enter your email and password." }, 400); }
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    const user = await env.DB.prepare("SELECT id,email,password_salt,password_hash,email_verified_at FROM users WHERE email=? COLLATE NOCASE").bind(email).first();
+    if (!user || await hashAuthPassword(password, user.password_salt) !== user.password_hash) {
+      return json({ error: "Email or password is incorrect." }, 401);
+    }
+    if (user.email_verified_at) return json({ ok: true, message: "Your email is already verified. You can log in." });
     try {
-      await issueEmailAction(env, session.userId, user.email, "verify_email", request);
-      return json({ ok: true, message: "Verification email sent." });
+      await issueEmailAction(env, user.id, user.email, "verify_email", request);
+      return json({ ok: true, message: "Verification email sent. Check your inbox." });
     } catch {
       return json({ error: "Email delivery is not configured yet. Please try again later." }, 503);
     }
@@ -190,7 +194,7 @@ async function auth(request, env, action) {
     let body;
     try { body = await request.json(); } catch { return json({ error: "Enter a valid email address." }, 400); }
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-    if (!/^[^\s@]{1,64}@[^s@]{1,190}\.[^s@]{2,30}$/.test(email)) return json({ error: "Enter a valid email address." }, 400);
+    if (!/^[^\s@]{1,64}@[^\\s@]{1,190}\.[^\\s@]{2,30}$/.test(email)) return json({ error: "Enter a valid email address." }, 400);
     const user = await env.DB.prepare("SELECT id,email FROM users WHERE email=? COLLATE NOCASE").bind(email).first();
     if (user) {
       try { await issueEmailAction(env, user.id, user.email, "reset_password", request); }
@@ -224,7 +228,7 @@ async function auth(request, env, action) {
   } catch { return json({ error: "Enter a valid email and password." }, 400); }
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body.password === "string" ? body.password : "";
-  if (!/^[^\s@]{1,64}@[^s@]{1,190}\.[^s@]{2,30}$/.test(email) || password.length < 10 || password.length > 128) {
+  if (!/^[^\s@]{1,64}@[^\\s@]{1,190}\.[^\\s@]{2,30}$/.test(email) || password.length < 10 || password.length > 128) {
     return json({ error: "Use a valid email and a password between 10 and 128 characters." }, 400);
   }
   let user;
@@ -544,6 +548,36 @@ export default {
     if (url.pathname === "/api/auth/login" && request.method === "POST") {
       try { return await auth(request, env, "login"); }
       catch { return json({ error: "We couldn't log you in right now." }, 503); }
+    }
+
+    if (url.pathname === "/api/auth/verify" && request.method === "POST") {
+      try { return await auth(request, env, "verify"); }
+      catch { return json({ error: "We couldn't verify that email right now." }, 503); }
+    }
+    if (url.pathname === "/api/auth/forgot" && request.method === "POST") {
+      try { return await auth(request, env, "forgot"); }
+      catch { return json({ error: "Password recovery is temporarily unavailable." }, 503); }
+    }
+    if (url.pathname === "/api/auth/reset" && request.method === "POST") {
+      try { return await auth(request, env, "reset"); }
+      catch { return json({ error: "We couldn't reset your password right now." }, 503); }
+    }
+    if (url.pathname === "/api/auth/resend-verification" && request.method === "POST") {
+      try { return await auth(request, env, "resend"); }
+      catch { return json({ error: "We couldn't send a verification email right now." }, 503); }
+    }
+    if (url.pathname === "/api/account/change-password" && request.method === "POST") {
+      try { return await auth(request, env, "change"); }
+      catch { return json({ error: "We couldn't update your password right now." }, 503); }
+    }
+    if (url.pathname === "/api/account/sessions" && (request.method === "GET" || request.method === "DELETE")) {
+      try { return await accountSessions(request, env, request.method, ""); }
+      catch { return json({ error: "We couldn't manage your sessions right now." }, 503); }
+    }
+    const sessionDeleteMatch = url.pathname.match(/^\/api\/account\/sessions\/([0-9a-f-]{36})$/i);
+    if (sessionDeleteMatch && request.method === "DELETE") {
+      try { return await accountSessions(request, env, "DELETE", sessionDeleteMatch[1]); }
+      catch { return json({ error: "We couldn't sign out that session." }, 503); }
     }
     if (url.pathname === "/api/auth/logout" && request.method === "POST") {
       try { return await auth(request, env, "logout"); }
