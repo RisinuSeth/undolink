@@ -10,7 +10,7 @@ button,input,select{font:inherit}
 main{width:min(760px,calc(100% - 40px));margin:0 auto}
 .intro{padding:76px 0 39px}
 .eyebrow{font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--orange-dark);margin:0 0 20px}
-h1{font:800 clamp(48px,8vw,76px)/.99 "Manrope",sans-serif;letter-spacing:-.065em;margin:0}
+h1{font:800 clamp(48px,8vw,76px)/.99 "Plus Jakarta Sans",sans-serif;letter-spacing:-.065em;margin:0}
 h1 span{color:var(--orange)}
 .intro-copy{font-size:15px;color:#666;margin:20px 0 0;line-height:1.6}
 .workspace{border:1px solid var(--line);padding:30px;background:var(--white)}
@@ -40,12 +40,12 @@ input::placeholder{color:#aaa}
 .manage-note{margin-top:7px}
 .how{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;padding:54px 0 48px;border-bottom:1px solid var(--line)}
 .how>div{min-width:0}
-.step-number{display:block;color:var(--orange);font:700 12px "Manrope",sans-serif;margin-bottom:15px}
-.how strong{font:700 13px "Manrope",sans-serif}
+.step-number{display:block;color:var(--orange);font:700 12px "Plus Jakarta Sans",sans-serif;margin-bottom:15px}
+.how strong{font:700 13px "Plus Jakarta Sans",sans-serif}
 .how p{font-size:11px;line-height:1.6;color:var(--muted);margin:8px 0 0}
 .recent-section{padding:36px 0;border-bottom:1px solid var(--line)}
 .section-heading{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px}
-.section-heading h2{font:700 19px "Manrope",sans-serif;letter-spacing:-.04em;margin:0}
+.section-heading h2{font:700 19px "Plus Jakarta Sans",sans-serif;letter-spacing:-.04em;margin:0}
 .section-heading span{font-size:10px;color:var(--muted)}
 .recent-item{display:flex;justify-content:space-between;gap:18px;align-items:center;padding:14px 0;border-top:1px solid var(--soft)}
 .recent-main{min-width:0}
