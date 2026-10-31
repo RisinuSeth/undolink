@@ -8,7 +8,7 @@ Temporary links that stop redirecting when their time is up.
 - Plain HTML, CSS and JavaScript
 
 ## Current functionality
-- Create short redirects with fixed expiry options: 15 minutes, 1 hour, 24 hours, 7 days or 30 days.
+- Create short redirects with fixed expiry options: 15 minutes, 1 hour, 24 hours, 7 days or 30 days, or choose a custom date and time within 30 days.
 - Optional custom slugs using 4–24 lowercase letters, numbers and hyphens.
 - Optional password protection using PBKDF2-SHA-256 password hashes and per-link password-attempt limits.
 - Optional click limits, including one-time links.
@@ -34,5 +34,6 @@ The D1 binding is named `DB`. The initial schema is in `migrations/0001_init.sql
 2. Apply the schema to local D1:
    `npx wrangler d1 execute undolink-db --local --file=migrations/0001_init.sql`
    `npx wrangler d1 execute undolink-db --local --file=migrations/0002_click_analytics.sql`
+   `npx wrangler d1 execute undolink-db --local --file=migrations/0003_password_protection.sql`
    `npx wrangler d1 execute undolink-db --local --file=migrations/0003_password_protection.sql`
 3. Run `npx wrangler pages dev .`.
