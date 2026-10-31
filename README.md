@@ -35,5 +35,4 @@ The D1 binding is named `DB`. The initial schema is in `migrations/0001_init.sql
    `npx wrangler d1 execute undolink-db --local --file=migrations/0001_init.sql`
    `npx wrangler d1 execute undolink-db --local --file=migrations/0002_click_analytics.sql`
    `npx wrangler d1 execute undolink-db --local --file=migrations/0003_password_protection.sql`
-   `npx wrangler d1 execute undolink-db --local --file=migrations/0003_password_protection.sql`
 3. Run `npx wrangler pages dev .`.
