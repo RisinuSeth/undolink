@@ -34,6 +34,17 @@ const STORAGE_KEY="undolink.links.v1";
 let activeLink=null;
 
 const accountButton=document.querySelector("#account-button");
+const settingsButton=document.querySelector("#account-settings-button");
+const settingsModal=document.querySelector("#settings-modal");
+const settingsBackdrop=document.querySelector("#settings-backdrop");
+const settingsClose=document.querySelector("#settings-close");
+const settingsEmail=document.querySelector("#settings-email");
+const sessionsList=document.querySelector("#sessions-list");
+const changePasswordForm=document.querySelector("#change-password-form");
+const currentPassword=document.querySelector("#current-password");
+const newPassword=document.querySelector("#new-password");
+const settingsMessage=document.querySelector("#settings-message");
+const changePasswordSubmit=document.querySelector("#change-password-submit");
 const accountLabel=document.querySelector("#account-label");
 const accountModal=document.querySelector("#account-modal");
 const accountBackdrop=document.querySelector("#account-backdrop");
@@ -44,12 +55,17 @@ const accountPassword=document.querySelector("#account-password");
 const accountSubmit=document.querySelector("#account-submit");
 const accountMessage=document.querySelector("#account-message");
 const accountSwitch=document.querySelector("#account-switch");
+const accountSwitchRow=document.querySelector("#account-switch-row");
+const accountForgot=document.querySelector("#account-forgot");
+const accountResend=document.querySelector("#account-resend");
+const accountPasswordLabel=document.querySelector('label[for="account-password"]');
 const accountSwitchLabel=document.querySelector("#account-switch-label");
 const accountTitle=document.querySelector("#account-title");
 const accountCopy=document.querySelector("#account-copy");
 let currentUser=null;
 let accountMode="login";
 let accountItems=[];
+let pendingResetToken="";
 
 
 function notify(text){
