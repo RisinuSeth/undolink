@@ -17,6 +17,7 @@ const qrDownload=document.querySelector("#qr-download");
 const qrPanel=document.querySelector("#qr-panel");
 const qrCanvas=document.querySelector("#qr-canvas");
 const recentSection=document.querySelector("#recent-section");
+const dashboardStorageLabel=document.querySelector("#dashboard-storage-label");
 const recentList=document.querySelector("#recent-list");
 const dashboardSummary=document.querySelector("#dashboard-summary");
 const dashboardEmpty=document.querySelector("#dashboard-empty");
@@ -105,6 +106,7 @@ function renderRecent(){
   }
   const items=[...bySlug.values()];
   recentSection.hidden=!items.length;
+  dashboardStorageLabel.textContent=currentUser?"Synced to your account":"Saved on this device";
   recentList.replaceChildren();
   const counts={active:0,scheduled:0,paused:0,expired:0,disabled:0};
   for(const item of items)counts[linkStatus(item)]++;
