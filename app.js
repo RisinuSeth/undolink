@@ -409,7 +409,6 @@ function updateAccountMode(){
   accountSwitchLabel.textContent=signup?"Already have an account?":"New to UndoLink?";
   accountSwitch.textContent=signup?"Log in":"Create an account";
   accountForgot.hidden=!login;
-  if(!signup)accountResend.hidden=true;
 }
 async function syncAccountLinks(){
   if(!currentUser){accountItems=[];renderRecent();return}
@@ -505,7 +504,7 @@ accountForm.addEventListener("submit",async event=>{
     await syncAccountLinks();
     notify("Welcome back");
   }catch(error){accountMessage.textContent=error.message||"Please try again."}
-  finally{accountSubmit.disabled=false;updateAccountMode();if(accountMode==="signup"||accountMode==="login")accountResend.hidden=false}
+  finally{accountSubmit.disabled=false;updateAccountMode()}
 });
 accountSwitch.addEventListener("click",()=>{
   accountMode=accountMode==="login"?"signup":"login";
