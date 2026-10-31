@@ -74,6 +74,11 @@ async function createLink(request, env) {
     if (!expiryChoices.has(duration)) return json({ error: "Choose one of the available expiry times." }, 400);
     expiresAt = now + duration;
   }
+  const startsAtValue = body.startsAt == null ? null : Number(body.startsAt);
+  const startsAt = startsAtValue == null ? null : Math.floor(startsAtValue / 1000);
+  if (startsAt !== null && (!Number.isFinite(startsAt) || startsAt <= now || startsAt > now + 2592000 || startsAt >= expiresAt)) {
+    return json({ error: "Choose a future start time before the link expiry, within 30 days." }, 400);
+  }
   const maxClicks = body.maxClicks == null ? null : Number(body.maxClicks);
   if (maxClicks !== null && !clickChoices.has(maxClicks)) {
     return json({ error: "Choose a valid click limit." }, 400);
@@ -84,6 +89,9 @@ async function createLink(request, env) {
   }
   const passwordSalt = password ? token(16) : null;
   const passwordHash = password ? await hashPassword(password, passwordSalt) : null;
+
+  if (link.paused_at !== null) return page("This link is paused", "The person who created this link has temporarily paused it.", 200);
+  if (link.starts_at && link.starts_at > now) return page("This link isn't active yet", "Come back when its scheduled start time has arrived.", 200);
 
   const ip = request.headers.get("CF-Connecting-IP") || "unknown";
   const ipHash = await digest(ip);
@@ -114,8 +122,8 @@ async function createLink(request, env) {
   for (const candidate of candidates) {
     try {
       await env.DB.prepare(
-        "INSERT INTO links (id,slug,destination_url,created_at,expires_at,max_clicks,manage_token_hash,password_salt,password_hash) VALUES (?,?,?,?,?,?,?,?,?)"
-      ).bind(crypto.randomUUID(), candidate, destination.href, now, expiresAt, maxClicks, manageHash, passwordSalt, passwordHash).run();
+        "INSERT INTO links (id,slug,destination_url,created_at,expires_at,max_clicks,manage_token_hash,password_salt,password_hash,starts_at) VALUES (?,?,?,?,?,?,?,?,?,?)"
+      ).bind(crypto.randomUUID(), candidate, destination.href, now, expiresAt, maxClicks, manageHash, passwordSalt, passwordHash, startsAt).run();
       slug = candidate;
       break;
     } catch (error) {
@@ -139,7 +147,7 @@ async function manage(request, env, slug) {
 
   if (request.method === "GET") {
     const link = await env.DB.prepare(
-      "SELECT id, clicks, max_clicks, expires_at, disabled_at, password_hash FROM links WHERE slug=?"
+      "SELECT id, clicks, max_clicks, expires_at, disabled_at, password_hash, starts_at, paused_at FROM links WHERE slug=?"
     ).bind(slug).first();
     if (!link) return json({ error: "Link not found." }, 404);
     const recent = await env.DB.prepare(
@@ -151,6 +159,8 @@ async function manage(request, env, slug) {
       expiresAt: link.expires_at * 1000,
       disabled: link.disabled_at !== null,
       passwordProtected: !!link.password_hash,
+      scheduledAt: link.starts_at ? link.starts_at * 1000 : null,
+      paused: link.paused_at !== null,
       recentClicks: (recent.results || []).map(item => item.clicked_at * 1000)
     });
   }
@@ -163,6 +173,13 @@ async function manage(request, env, slug) {
       await env.DB.prepare("UPDATE links SET disabled_at=? WHERE slug=? AND disabled_at IS NULL")
         .bind(Math.floor(Date.now() / 1000), slug).run();
       return json({ ok: true });
+    }
+
+    if (typeof body.paused === "boolean") {
+      const pausedAt = body.paused ? Math.floor(Date.now() / 1000) : null;
+      await env.DB.prepare("UPDATE links SET paused_at=? WHERE slug=? AND disabled_at IS NULL")
+        .bind(pausedAt, slug).run();
+      return json({ ok: true, paused: body.paused });
     }
 
     const extendBy = Number(body.extendBy);
@@ -199,7 +216,7 @@ async function unlock(request, env, slug) {
 
   const now = Math.floor(Date.now() / 1000);
   const link = await env.DB.prepare(
-    "SELECT id, password_salt, password_hash FROM links WHERE slug=? AND disabled_at IS NULL AND expires_at>? AND (max_clicks IS NULL OR clicks<max_clicks)"
+    "SELECT id, password_salt, password_hash, starts_at, paused_at FROM links WHERE slug=? AND disabled_at IS NULL AND expires_at>? AND (max_clicks IS NULL OR clicks<max_clicks)"
   ).bind(slug, now).first();
   if (!link || !link.password_hash || !link.password_salt) {
     return page("This link has expired", "The UndoLink redirect is no longer active. The original destination hasn't been changed.");
@@ -266,9 +283,11 @@ export default {
       const now = Math.floor(Date.now() / 1000);
       try {
         const candidate = await env.DB.prepare(
-          "SELECT id, password_hash FROM links WHERE slug=? AND disabled_at IS NULL AND expires_at>? AND (max_clicks IS NULL OR clicks<max_clicks)"
+          "SELECT id, password_hash, starts_at, paused_at FROM links WHERE slug=? AND disabled_at IS NULL AND expires_at>? AND (max_clicks IS NULL OR clicks<max_clicks)"
         ).bind(slug, now).first();
         if (!candidate) return page("This link has expired", "The UndoLink redirect is no longer active. The original destination hasn't been changed.");
+        if (candidate.paused_at !== null) return page("This link is paused", "The person who created this link has temporarily paused it.", 200);
+        if (candidate.starts_at && candidate.starts_at > now) return page("This link isn't active yet", "Come back when its scheduled start time has arrived.", 200);
         if (candidate.password_hash) return passwordPage(slug);
         const row = await env.DB.prepare(
           "UPDATE links SET clicks=clicks+1 WHERE slug=? AND disabled_at IS NULL AND expires_at>? AND (max_clicks IS NULL OR clicks<max_clicks) RETURNING id, destination_url"
