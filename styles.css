@@ -47,7 +47,12 @@ input::placeholder{color:#aaa}
 .section-heading{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px}
 .section-heading h2{font:700 19px "Plus Jakarta Sans",sans-serif;letter-spacing:-.04em;margin:0}
 .section-heading span{font-size:10px;color:var(--muted)}
-.recent-item{display:flex;justify-content:space-between;gap:18px;align-items:center;padding:14px 0;border-top:1px solid var(--soft)}
+.recent-item{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:18px;row-gap:12px;align-items:center;padding:14px 0;border-top:1px solid var(--soft)}
+.link-stats{grid-column:1/-1;padding:14px 16px;background:var(--paper);border-left:2px solid var(--orange);font-size:11px;color:var(--muted)}
+.link-stats strong{display:block;color:var(--ink);font-size:12px;margin-bottom:5px}
+.link-stats p{margin:4px 0;line-height:1.5}
+.link-stats .stats-label{margin-top:12px;color:var(--ink);font-weight:700}
+.link-stats ul{margin:6px 0 0;padding-left:17px;display:grid;gap:4px}
 .recent-main{min-width:0}
 .recent-main a{font-size:12px;font-weight:700;color:var(--ink);overflow-wrap:anywhere}
 .recent-main p{font-size:10px;color:var(--muted);margin:5px 0 0}
@@ -59,4 +64,4 @@ footer span:first-child{font-weight:700;color:var(--ink);white-space:nowrap}
 .toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,12px);background:var(--ink);color:white;padding:11px 16px;font-size:12px;opacity:0;pointer-events:none;transition:.2s}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 [hidden]{display:none!important}
-@media(max-width:600px){.topbar{height:64px;padding:0 20px}.top-note{font-size:10px}.intro{padding:55px 0 30px}.workspace{padding:20px}.settings-row{grid-template-columns:1fr;gap:16px}.how{gap:15px;padding:40px 0}.how strong{font-size:11px}.how p{font-size:10px}footer{flex-direction:column;gap:6px}.generated-link{align-items:flex-start;flex-direction:column}.copy-button{width:100%}}
+@media(max-width:600px){.recent-item{grid-template-columns:minmax(0,1fr)}.recent-actions{flex-wrap:wrap}.link-stats{grid-column:1}.topbar{height:64px;padding:0 20px}.top-note{font-size:10px}.intro{padding:55px 0 30px}.workspace{padding:20px}.settings-row{grid-template-columns:1fr;gap:16px}.how{gap:15px;padding:40px 0}.how strong{font-size:11px}.how p{font-size:10px}footer{flex-direction:column;gap:6px}.generated-link{align-items:flex-start;flex-direction:column}.copy-button{width:100%}}
