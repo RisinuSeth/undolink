@@ -231,6 +231,7 @@ form.addEventListener("submit",async event=>{
     }
     form.reset();
     expiry.value="3600";
+    customExpiry.hidden=true;
     result.scrollIntoView({behavior:"smooth",block:"nearest"});
   }catch(error){message.textContent=error.message||"Something went wrong. Please try again."}
   finally{
