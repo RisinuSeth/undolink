@@ -135,6 +135,87 @@ test("rejects link passwords outside the supported length", async () => {
   assert.match(data.error, /password must be between 6 and 64/i);
 });
 
+
+function createSignupEnv({ failTerms = false } = {}) {
+  const state = { users: [], acceptances: [], operations: [] };
+  const DB = {
+    prepare(sql) {
+      const statement = {
+        sql,
+        values: [],
+        bind(...values) { this.values = values; return this; },
+        async first() {
+          if (sql.includes("INSERT INTO auth_rate_limits")) return { count: 1 };
+          return null;
+        },
+        async run() {
+          state.operations.push({ sql, values: this.values });
+          return { meta: { changes: 1 } };
+        }
+      };
+      return statement;
+    },
+    async batch(statements) {
+      const userStatement = statements.find(statement => statement.sql.includes("INSERT INTO users"));
+      const termsStatement = statements.find(statement => statement.sql.includes("INSERT INTO terms_acceptances"));
+      assert.ok(userStatement, "user insert is part of the transaction");
+      assert.ok(termsStatement, "Terms acceptance insert is part of the transaction");
+      if (failTerms) throw new Error("Simulated Terms acceptance insert failure");
+      state.users.push({ id: userStatement.values[0], email: userStatement.values[1] });
+      state.acceptances.push({ id: termsStatement.values[0], userId: termsStatement.values[1], version: termsStatement.values[2] });
+      return [{ success: true }, { success: true }];
+    }
+  };
+  return {
+    state, DB,
+    RESEND_API_KEY: "test-key",
+    EMAIL_FROM: "UndoLink <no-reply@example.test>",
+    APP_ORIGIN: "https://undolink.test",
+    ASSETS: { async fetch() { return new Response("asset not found", { status: 404 }); } }
+  };
+}
+
+function signupRequest(email = "new-user@example.com") {
+  return new Request("https://undolink.test/api/auth/signup", {
+    method: "POST",
+    headers: { "content-type": "application/json", "CF-Connecting-IP": "192.0.2.10" },
+    body: JSON.stringify({
+      email, password: "correct-horse-battery",
+      acceptedTerms: true, termsVersion: "2026-10-31"
+    })
+  });
+}
+
+test("signup commits the user and Terms acceptance together before sending verification email", async () => {
+  const env = createSignupEnv();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response("{}", { status: 200 });
+  try {
+    const response = await worker.fetch(signupRequest(), env);
+    const data = await response.json();
+    assert.equal(response.status, 201);
+    assert.equal(data.verificationRequired, true);
+    assert.equal(env.state.users.length, 1);
+    assert.equal(env.state.acceptances.length, 1);
+    assert.equal(env.state.acceptances[0].userId, env.state.users[0].id);
+    assert.equal(env.state.acceptances[0].version, "2026-10-31");
+    assert.ok(env.state.operations.some(operation => operation.sql.includes("INSERT INTO email_action_tokens")));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("signup rolls back the user when the Terms acceptance insert fails", async () => {
+  const env = createSignupEnv({ failTerms: true });
+  const response = await worker.fetch(signupRequest("rollback@example.com"), env);
+  const data = await response.json();
+  assert.equal(response.status, 503);
+  assert.match(data.error, /couldn't create your account/i);
+  assert.equal(env.state.users.length, 0);
+  assert.equal(env.state.acceptances.length, 0);
+  assert.ok(env.state.operations.some(operation => operation.sql.includes("INSERT INTO signup_diagnostics")));
+});
+
 async function sha256Hex(value) {
   const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return [...new Uint8Array(hash)].map(byte => byte.toString(16).padStart(2, "0")).join("");
