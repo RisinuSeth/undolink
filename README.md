@@ -38,7 +38,7 @@ Temporary links that stop redirecting when their time is up.
 - Email verification and recovery require the Resend environment variables described below. Do not claim signup or recovery email delivery is working until a verified sender and API key are configured and tested.
 
 ## Database
-The D1 binding is named `DB`. The schema migrations are `0001_init.sql` (links), `0002_click_analytics.sql` (click analytics), `0003_password_protection.sql` (password-protected links), `0004_scheduling_and_pause.sql` (scheduled and paused links), `0005_accounts.sql` (users, sessions and link ownership), and `0006_email_verification_and_recovery.sql` (email verification and password recovery).
+The D1 binding is named `DB`. The schema migrations are `0001_init.sql` (links), `0002_click_analytics.sql` (click analytics), `0003_password_protection.sql` (password-protected links), `0004_scheduling_and_pause.sql` (scheduled and paused links), `0005_accounts.sql` (users, sessions and link ownership), `0006_email_verification_and_recovery.sql` (email verification and password recovery), `0007_terms_acceptances.sql` (Terms acceptance records), and `0008_retention_indexes.sql` (indexes used by scheduled cleanup).
 
 ## Email delivery setup
 
@@ -58,4 +58,9 @@ Redeploy after configuring variables. Until email delivery is configured, new re
    `npx wrangler d1 execute undolink-db --local --file=migrations/0004_scheduling_and_pause.sql`
    `npx wrangler d1 execute undolink-db --local --file=migrations/0005_accounts.sql`
    `npx wrangler d1 execute undolink-db --local --file=migrations/0006_email_verification_and_recovery.sql`
+   `npx wrangler d1 execute undolink-db --local --file=migrations/0007_terms_acceptances.sql`
+   `npx wrangler d1 execute undolink-db --local --file=migrations/0008_retention_indexes.sql`
 3. Run `npx wrangler pages dev .`.
+
+## Scheduled database maintenance
+A separate Worker uses `maintenance/cleanup.js` and `wrangler.cleanup.toml` to run daily at 03:00 UTC. Deploy or update it with `npx wrangler deploy --config wrangler.cleanup.toml`. It removes expired sessions immediately; rate-limit records older than 7 days; password-unlock attempt records older than 2 days; expired/used email-action tokens and signup diagnostics older than 30 days; and click-history records older than 90 days. Deletions are processed in batches of up to 1,000 rows per table per run. Links, user accounts, and Terms acceptance records are not removed by this job.
