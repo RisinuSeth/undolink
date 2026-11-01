@@ -12,7 +12,7 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
   headers: { ...securityHeaders, "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
 });
-const passwordPage = (slug, incorrect = false) => new Response(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Password required — UndoLink</title><style>*{box-sizing:border-box}body{margin:0;padding:40px 22px;background:#fff;color:#252525;font:15px/1.6 Arial,sans-serif}.wrap{max-width:440px;margin:14vh auto}.brand{font-weight:800;font-size:20px;letter-spacing:-1px}.mark{display:inline-block;width:29px;height:29px;margin-right:8px;vertical-align:middle}h1{font-size:32px;line-height:1.1;letter-spacing:-1.2px;margin:48px 0 10px}p{color:#777;margin:0 0 22px}input{width:100%;height:50px;border:1px solid #ccc;padding:0 13px;font:inherit}button{width:100%;height:50px;margin-top:12px;border:0;background:#f07832;color:#fff;font-weight:700;cursor:pointer}.error{color:#b33d24;font-size:13px;margin:0 0 12px}</style><main class="wrap"><div class="brand"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" fill="#F07832"/><g transform="translate(16 16) scale(1.48) rotate(-45) translate(-16 -16)" fill="none" stroke="#fff" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5v7.5c0 4.2 2.8 7 7 7s7-2.8 7-7V5"/><path d="M9 27v-7.5c0-4.2 2.8-7 7-7s7 2.8 7 7V27"/></g></svg>UndoLink</div><h1>This link is protected.</h1><p>Enter the password shared by the person who sent you this link.</p>${incorrect ? '<p class="error">That password did not match. Try again.</p>' : ''}<form method="post" action="/api/links/${slug}/unlock"><input type="password" name="password" minlength="6" maxlength="64" placeholder="Link password" autocomplete="current-password" required><button type="submit">Continue</button></form></main></html>`, {
+const passwordPage = (slug, incorrect = false) => new Response(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Password required — UndoLink</title><style>*{box-sizing:border-box}body{margin:0;padding:40px 22px;background:#fff;color:#252525;font:15px/1.6 Arial,sans-serif}.wrap{max-width:440px;margin:14vh auto}.brand{font-weight:800;font-size:20px;letter-spacing:-1px}.mark{display:inline-block;width:29px;height:29px;margin-right:8px;vertical-align:middle}h1{font-size:32px;line-height:1.1;letter-spacing:-1.2px;margin:48px 0 10px}p{color:#777;margin:0 0 22px}input{width:100%;height:50px;border:1px solid #ccc;padding:0 13px;font:inherit}button{width:100%;height:50px;margin-top:12px;border:0;background:#f07832;color:#fff;font-weight:700;cursor:pointer}.error{color:#b33d24;font-size:13px;margin:0 0 12px}</style><main class="wrap"><div class="brand"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" fill="#F07832"/><g transform="translate(16 16) scale(1.48) rotate(-45) translate(-16 -16)" fill="none" stroke="#fff" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5v7.5c0 4.2 2.8 7 7 7s7-2.8 7-7V5"/><path d="M9 27v-7.5c0-4.2 2.8-7 7-7s7 2.8 7 7V27"/></g></svg>UndoLink</div><h1>This link is protected.</h1><p>Enter the password shared by the person who sent you this link.</p>${incorrect ? '<p class="error">That password did not match. Try again.</p>' : ''}<form id="unlock-form" method="post" action="/api/links/${slug}/unlock"><input type="password" name="password" minlength="6" maxlength="64" placeholder="Link password" autocomplete="current-password" required><button id="unlock-submit" type="submit">Continue</button></form><p id="unlock-message" class="error" role="status" aria-live="polite" hidden></p></main><script src="/unlock.js" defer></script></html>`, {
   status: incorrect ? 401 : 200,
   headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8", "cache-control": "no-store" }
 });
@@ -569,13 +569,15 @@ async function manage(request, env, slug) {
 }
 
 async function unlock(request, env, slug) {
+  const wantsJson = (request.headers.get("Accept") || "").includes("application/json");
+  const fail = (message, status = 401) => wantsJson ? json({ error: message }, status) : passwordPage(slug, true);
   const contentLength = Number(request.headers.get("content-length") || 0);
-  if (contentLength > 4096) return passwordPage(slug, true);
+  if (contentLength > 4096) return fail("That password request is too large.", 413);
   let form;
-  try { form = await request.formData(); } catch { return passwordPage(slug, true); }
+  try { form = await request.formData(); } catch { return fail("Please enter the link password."); }
   const password = form.get("password");
   if (typeof password !== "string" || password.length < 1 || password.length > 64) {
-    return passwordPage(slug, true);
+    return fail("Please enter the link password.");
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -596,7 +598,7 @@ async function unlock(request, env, slug) {
     "ON CONFLICT(ip_hash,slug,window_start) DO UPDATE SET count=count+1 RETURNING count"
   ).bind(ipHash, slug, windowStart).first();
   if (rate?.count > 20) {
-    return new Response("Too many password attempts. Please try again later.", {
+    return wantsJson ? json({ error: "Too many password attempts. Please try again later." }, 429) : new Response("Too many password attempts. Please try again later.", {
       status: 429,
       headers: { ...securityHeaders, "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" }
     });
@@ -606,7 +608,7 @@ async function unlock(request, env, slug) {
   }
 
   const candidateHash = await hashPassword(password, link.password_salt);
-  if (candidateHash !== link.password_hash) return passwordPage(slug, true);
+  if (candidateHash !== link.password_hash) return fail("That password did not match. Try again.");
 
   const active = await env.DB.prepare(
     "UPDATE links SET clicks=clicks+1 WHERE id=? AND disabled_at IS NULL AND paused_at IS NULL AND (starts_at IS NULL OR starts_at<=?) AND expires_at>? AND (max_clicks IS NULL OR clicks<max_clicks) RETURNING id, destination_url"
@@ -617,6 +619,7 @@ async function unlock(request, env, slug) {
   } catch {
     // Keep the redirect available if analytics logging is temporarily unavailable.
   }
+  if (wantsJson) return json({ ok: true, redirectTo: active.destination_url });
   return new Response(null, {
     // Explicit POST-Redirect-GET after a successful password submission.
     status: 303,
@@ -732,7 +735,10 @@ export default {
     const unlockMatch = url.pathname.match(/^\/api\/links\/([a-z0-9](?:[a-z0-9-]{2,22}[a-z0-9]))\/unlock$/);
     if (unlockMatch && request.method === "POST") {
       try { return await unlock(request, env, unlockMatch[1]); }
-      catch { return page("Temporarily unavailable", "We couldn't verify this password right now. Please try again shortly.", 503); }
+      catch {
+        if ((request.headers.get("Accept") || "").includes("application/json")) return json({ error: "We couldn't verify this password right now. Please try again shortly." }, 503);
+        return page("Temporarily unavailable", "We couldn't verify this password right now. Please try again shortly.", 503);
+      }
     }
 
     const managementMatch = url.pathname.match(/^\/api\/links\/([a-z0-9](?:[a-z0-9-]{2,22}[a-z0-9]))$/);
