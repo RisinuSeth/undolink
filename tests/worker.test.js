@@ -284,3 +284,40 @@ test("static asset responses receive security headers", async () => {
   assert.equal(response.headers.get("x-frame-options"), "DENY");
   assert.equal(response.headers.get("referrer-policy"), "no-referrer");
 });
+
+
+import { cleanupDatabase } from "../maintenance/cleanup.js";
+
+test("database cleanup applies conservative retention windows without deleting links or users", async () => {
+  const calls = [];
+  const db = {
+    prepare(sql) {
+      return {
+        bind(...values) {
+          return {
+            async run() {
+              calls.push({ sql, values });
+              return { meta: { changes: 0 } };
+            }
+          };
+        }
+      };
+    }
+  };
+  const now = 2_000_000_000;
+  const result = await cleanupDatabase(db, now);
+  const day = 86400;
+
+  assert.deepEqual(result.cutoffs, {
+    expiredSessions: now,
+    rateLimits: now - 7 * day,
+    unlockAttempts: now - 2 * day,
+    emailTokens: now - 30 * day,
+    clickHistory: now - 90 * day
+  });
+  assert.equal(calls.length, 6);
+  assert.ok(calls.some(call => call.sql.includes("DELETE FROM link_clicks") && call.values[0] === now - 90 * day));
+  assert.ok(calls.some(call => call.sql.includes("DELETE FROM sessions") && call.values[0] === now));
+  assert.ok(calls.some(call => call.sql.includes("DELETE FROM email_action_tokens") && call.values.every(value => value === now - 30 * day)));
+  assert.ok(calls.every(call => !/DELETE FROM (links|users|terms_acceptances)/i.test(call.sql)));
+});
