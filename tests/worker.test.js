@@ -179,7 +179,7 @@ function createStatefulEnv({ links = [], sessions = [] } = {}) {
               return { id: l.id, password_hash: l.password_hash, starts_at: l.starts_at, paused_at: l.paused_at };
             }
             if (sql.includes("UPDATE links SET clicks=clicks+1")) {
-              const l = [...state.links.values()].find(item => item.id === v[0]);
+              const l = sql.includes("WHERE slug=?") ? state.links.get(v[0]) : [...state.links.values()].find(item => item.id === v[0]);
               if (!l || l.disabled_at !== null || l.paused_at !== null || (l.starts_at !== null && l.starts_at > v[1]) ||
                   l.expires_at <= v[2] || (l.max_clicks !== null && l.clicks >= l.max_clicks)) return null;
               l.clicks += 1;
