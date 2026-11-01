@@ -1,3 +1,5 @@
+import { hashAuthPassword, verifyAuthPassword } from "./auth/passwords.js";
+
 const securityHeaders = {
   "strict-transport-security": "max-age=31536000",
   "content-security-policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self'; upgrade-insecure-requests",
@@ -41,11 +43,6 @@ const reservedSlugs = new Set(["api","admin","assets","favicon","robots","privac
 
 const authCookieName = "undolink_session";
 const sessionLifetime = 30 * 24 * 60 * 60;
-const hashAuthPassword = async (password, saltHex) => {
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt: fromHex(saltHex), iterations: 100000, hash: "SHA-256" }, key, 256);
-  return [...new Uint8Array(bits)].map(value => value.toString(16).padStart(2, "0")).join("");
-};
 const cookieValue = (request, name) => {
   const header = request.headers.get("Cookie") || "";
   for (const part of header.split(";")) {
@@ -233,7 +230,7 @@ async function auth(request, env, action) {
     ).bind(now, await digest(raw), now).first();
     if (!consumed) return json({ error: "That reset link is invalid or expired. Request another one." }, 400);
     const salt = token(16);
-    const passwordHash = await hashAuthPassword(password, salt);
+    const passwordHash = await hashAuthPassword(password, salt, env.PASSWORD_PEPPER);
     await env.DB.prepare("UPDATE users SET password_salt=?,password_hash=? WHERE id=?").bind(salt, passwordHash, consumed.user_id).run();
     await env.DB.prepare("DELETE FROM sessions WHERE user_id=?").bind(consumed.user_id).run();
     return json({ ok: true });
@@ -245,8 +242,13 @@ async function auth(request, env, action) {
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     const password = typeof body.password === "string" ? body.password : "";
     const user = await env.DB.prepare("SELECT id,email,password_salt,password_hash,email_verified_at FROM users WHERE email=? COLLATE NOCASE").bind(email).first();
-    if (!user || await hashAuthPassword(password, user.password_salt) !== user.password_hash) {
-      return json({ error: "Email or password is incorrect." }, 401);
+    if (!user) return json({ error: "Email or password is incorrect." }, 401);
+    const passwordCheck = await verifyAuthPassword(password, user.password_salt, user.password_hash, env.PASSWORD_PEPPER);
+    if (passwordCheck.unavailable) return json({ error: "Authentication is temporarily unavailable. Please try again later." }, 503);
+    if (!passwordCheck.valid) return json({ error: "Email or password is incorrect." }, 401);
+    if (passwordCheck.needsUpgrade) {
+      const upgradedHash = await hashAuthPassword(password, user.password_salt, env.PASSWORD_PEPPER);
+      await env.DB.prepare("UPDATE users SET password_hash=? WHERE id=?").bind(upgradedHash, user.id).run();
     }
     if (user.email_verified_at) return json({ ok: true, message: "Your email is already verified. You can log in." });
     try {
@@ -278,9 +280,12 @@ async function auth(request, env, action) {
     const next = typeof body.newPassword === "string" ? body.newPassword : "";
     if (next.length < 10 || next.length > 128) return json({ error: "Your new password must be between 10 and 128 characters." }, 400);
     const user = await env.DB.prepare("SELECT password_salt,password_hash FROM users WHERE id=?").bind(session.userId).first();
-    if (!user || await hashAuthPassword(current, user.password_salt) !== user.password_hash) return json({ error: "Your current password is incorrect." }, 401);
+    if (!user) return json({ error: "Your current password is incorrect." }, 401);
+    const currentCheck = await verifyAuthPassword(current, user.password_salt, user.password_hash, env.PASSWORD_PEPPER);
+    if (currentCheck.unavailable) return json({ error: "Authentication is temporarily unavailable. Please try again later." }, 503);
+    if (!currentCheck.valid) return json({ error: "Your current password is incorrect." }, 401);
     const salt = token(16);
-    const passwordHash = await hashAuthPassword(next, salt);
+    const passwordHash = await hashAuthPassword(next, salt, env.PASSWORD_PEPPER);
     await env.DB.prepare("UPDATE users SET password_salt=?,password_hash=? WHERE id=?").bind(salt, passwordHash, session.userId).run();
     await env.DB.prepare("DELETE FROM sessions WHERE user_id=? AND id<>?").bind(session.userId, session.sessionId).run();
     return json({ ok: true, message: "Password updated. Other sessions were signed out." });
@@ -304,7 +309,7 @@ async function auth(request, env, action) {
       return json({ error: "Please accept the current Terms of Service before creating an account." }, 400);
     }
     const salt = token(16);
-    const passwordHash = await hashAuthPassword(password, salt);
+    const passwordHash = await hashAuthPassword(password, salt, env.PASSWORD_PEPPER);
     user = { id: crypto.randomUUID(), email };
     const createdAt = Math.floor(Date.now() / 1000);
     try {
@@ -331,8 +336,13 @@ async function auth(request, env, action) {
   }
   const row = await env.DB.prepare("SELECT id,email,password_salt,password_hash,email_verified_at FROM users WHERE email=? COLLATE NOCASE").bind(email).first();
   if (!row) return json({ error: "Email or password is incorrect." }, 401);
-  const candidate = await hashAuthPassword(password, row.password_salt);
-  if (candidate !== row.password_hash) return json({ error: "Email or password is incorrect." }, 401);
+  const passwordCheck = await verifyAuthPassword(password, row.password_salt, row.password_hash, env.PASSWORD_PEPPER);
+  if (passwordCheck.unavailable) return json({ error: "Authentication is temporarily unavailable. Please try again later." }, 503);
+  if (!passwordCheck.valid) return json({ error: "Email or password is incorrect." }, 401);
+  if (passwordCheck.needsUpgrade) {
+    const upgradedHash = await hashAuthPassword(password, row.password_salt, env.PASSWORD_PEPPER);
+    await env.DB.prepare("UPDATE users SET password_hash=? WHERE id=?").bind(upgradedHash, row.id).run();
+  }
   if (!row.email_verified_at) return json({ error: "Verify your email first. Enter your password and use the resend verification option below." }, 403);
   user = { id: row.id, email: row.email };
   const cookie = await createSession(user.id, env);
