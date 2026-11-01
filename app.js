@@ -107,6 +107,17 @@ async function copy(text){
     notify("Copied to clipboard");
   }catch{notify("Couldn't copy automatically. Select and copy the link instead.")}
 }
+function canManageLink(item){
+  return !!item.manageKey||!!(currentUser&&accountItems.some(link=>link.slug===item.slug));
+}
+function linkRequestHeaders(item,extraHeaders={}){
+  const headers={...extraHeaders};
+  if(item.manageKey)headers.Authorization="Bearer "+item.manageKey;
+  else if(!(currentUser&&accountItems.some(link=>link.slug===item.slug))){
+    throw new Error("Log in to manage this link.");
+  }
+  return headers;
+}
 function linkStatus(item){
   if(item.disabled)return "disabled";
   if(item.paused)return "paused";
@@ -147,6 +158,7 @@ function renderRecent(){
   dashboardEmpty.hidden=visible.length>0;
   for(const item of visible){
     const status=linkStatus(item);
+    const canManage=canManageLink(item);
     const row=document.createElement("div");
     row.className="recent-item";
     const main=document.createElement("div");
@@ -161,19 +173,21 @@ function renderRecent(){
     main.append(a,p);
     const actions=document.createElement("div");
     actions.className="recent-actions";
-    const stats=document.createElement("button");
-    stats.className="small-action";
-    stats.type="button";
-    stats.textContent="Stats";
-    stats.addEventListener("click",()=>showStats(item,row,stats));
-    actions.append(stats);
+    if(canManage){
+      const stats=document.createElement("button");
+      stats.className="small-action";
+      stats.type="button";
+      stats.textContent="Stats";
+      stats.addEventListener("click",()=>showStats(item,row,stats));
+      actions.append(stats);
+    }
     const cp=document.createElement("button");
     cp.className="small-action";
     cp.type="button";
     cp.textContent="Copy";
     cp.addEventListener("click",()=>copy(item.url));
     actions.append(cp);
-    if(status==="active"&&item.manageKey){
+    if(status==="active"&&canManage){
       const disable=document.createElement("button");
       disable.className="small-action";
       disable.type="button";
@@ -181,7 +195,7 @@ function renderRecent(){
       disable.addEventListener("click",()=>disableLink(item));
       actions.append(disable);
     }
-    if(item.manageKey&&!item.disabled){
+    if(canManage&&!item.disabled){
       if(status!=="expired"||item.paused){
         const pause=document.createElement("button");
         pause.className="small-action";
@@ -197,7 +211,7 @@ function renderRecent(){
       extend.addEventListener("click",()=>extendLink(item));
       actions.append(extend);
     }
-    if(item.manageKey){
+    if(canManage){
       const remove=document.createElement("button");
       remove.className="small-action";
       remove.type="button";
@@ -217,7 +231,7 @@ async function showStats(item,row,button){
   try{
     const response=await fetch("/api/links/"+encodeURIComponent(item.slug),{
       method:"GET",
-      headers:{"Authorization":"Bearer "+item.manageKey}
+      headers:linkRequestHeaders(item)
     });
     const data=await response.json();
     if(!response.ok)throw new Error(data.error||"Couldn't load analytics");
@@ -258,13 +272,13 @@ async function disableLink(item){
   try{
     const response=await fetch("/api/links/"+encodeURIComponent(item.slug),{
       method:"PATCH",
-      headers:{"Authorization":"Bearer "+item.manageKey,"Content-Type":"application/json"},
+      headers:linkRequestHeaders(item,{"Content-Type":"application/json"}),
       body:JSON.stringify({disabled:true})
     });
     const data=await response.json();
     if(!response.ok)throw new Error(data.error||"Could not disable link");
     saveLinks(readLinks().map(link=>link.slug===item.slug?{...link,disabled:true}:link));
-    renderRecent();
+    if(currentUser)await syncAccountLinks();else renderRecent();
     notify("Link disabled");
   }catch(error){notify(error.message||"Could not disable link")}
 }
@@ -273,13 +287,13 @@ async function togglePause(item){
   try{
     const response=await fetch("/api/links/"+encodeURIComponent(item.slug),{
       method:"PATCH",
-      headers:{"Authorization":"Bearer "+item.manageKey,"Content-Type":"application/json"},
+      headers:linkRequestHeaders(item,{"Content-Type":"application/json"}),
       body:JSON.stringify({paused})
     });
     const data=await response.json();
     if(!response.ok)throw new Error(data.error||"Could not update link");
     saveLinks(readLinks().map(link=>link.slug===item.slug?{...link,paused:data.paused}:link));
-    renderRecent();
+    if(currentUser)await syncAccountLinks();else renderRecent();
     notify(paused?"Link paused":"Link resumed");
   }catch(error){notify(error.message||"Could not update link")}
 }
@@ -287,14 +301,14 @@ async function extendLink(item){
   try{
     const response=await fetch("/api/links/"+encodeURIComponent(item.slug),{
       method:"PATCH",
-      headers:{"Authorization":"Bearer "+item.manageKey,"Content-Type":"application/json"},
+      headers:linkRequestHeaders(item,{"Content-Type":"application/json"}),
       body:JSON.stringify({extendBy:86400})
     });
     const data=await response.json();
     if(!response.ok)throw new Error(data.error||"Could not extend link");
     const items=readLinks().map(link=>link.slug===item.slug?{...link,expiresAt:data.expiresAt}:link);
     saveLinks(items);
-    renderRecent();
+    if(currentUser)await syncAccountLinks();else renderRecent();
     notify("Link extended by 24 hours");
   }catch(error){notify(error.message||"Could not extend link")}
 }
@@ -303,12 +317,12 @@ async function deleteLink(item){
   try{
     const response=await fetch("/api/links/"+encodeURIComponent(item.slug),{
       method:"DELETE",
-      headers:{"Authorization":"Bearer "+item.manageKey}
+      headers:linkRequestHeaders(item)
     });
     const data=await response.json();
     if(!response.ok)throw new Error(data.error||"Could not delete link");
     saveLinks(readLinks().filter(link=>link.slug!==item.slug));
-    renderRecent();
+    if(currentUser)await syncAccountLinks();else renderRecent();
     notify("Link record deleted");
   }catch(error){notify(error.message||"Could not delete link")}
 }
