@@ -326,7 +326,7 @@ test("password-protected links reject incorrect passwords and unlock correctly",
   assert.equal(env.state.links.get("test-link").clicks, 0);
   const correctForm = new FormData(); correctForm.set("password", "correct-horse");
   const unlocked = await worker.fetch(new Request("https://undolink.test/api/links/test-link/unlock", { method: "POST", body: correctForm }), env);
-  assert.equal(unlocked.status, 302);
+  assert.equal(unlocked.status, 303);
   assert.equal(unlocked.headers.get("location"), "https://destination.example/path");
   assert.equal(env.state.links.get("test-link").clicks, 1);
 });
