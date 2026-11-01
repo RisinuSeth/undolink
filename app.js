@@ -749,3 +749,6 @@ bulkCreate.addEventListener("click",createBulkLinks);
 renderRecent();
 refreshAccount().catch(()=>notify("Account status couldn’t be loaded."));
 handleAccountLink();
+
+const footerYear=document.querySelector("#footer-year");
+if(footerYear) footerYear.textContent=String(new Date().getFullYear());
