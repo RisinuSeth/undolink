@@ -330,6 +330,36 @@ test("password-protected links reject incorrect passwords and unlock correctly",
   assert.equal(unlocked.headers.get("location"), "https://destination.example/path");
   assert.equal(env.state.links.get("test-link").clicks, 1);
 });
+test("password unlock page uses JSON submission with visible feedback and redirect target", async () => {
+  const salt = "0123456789abcdef0123456789abcdef";
+  const hash = await passwordHash("correct-horse", salt);
+  const env = createStatefulEnv({ links: [linkRecord({ password_salt: salt, password_hash: hash })] });
+
+  const landing = await worker.fetch(new Request("https://undolink.test/test-link"), env);
+  const html = await landing.text();
+  assert.match(html, /id="unlock-form"/);
+  assert.match(html, /src="\\/unlock.js"/);
+  assert.match(html, /id="unlock-message"/);
+
+  const wrongForm = new FormData();
+  wrongForm.set("password", "wrong-password");
+  const wrong = await worker.fetch(new Request("https://undolink.test/api/links/test-link/unlock", {
+    method: "POST", body: wrongForm, headers: { Accept: "application/json" }
+  }), env);
+  assert.equal(wrong.status, 401);
+  assert.deepEqual(await wrong.json(), { error: "That password did not match. Try again." });
+  assert.equal(env.state.links.get("test-link").clicks, 0);
+
+  const correctForm = new FormData();
+  correctForm.set("password", "correct-horse");
+  const correct = await worker.fetch(new Request("https://undolink.test/api/links/test-link/unlock", {
+    method: "POST", body: correctForm, headers: { Accept: "application/json" }
+  }), env);
+  assert.equal(correct.status, 200);
+  assert.deepEqual(await correct.json(), { ok: true, redirectTo: "https://destination.example/path" });
+  assert.equal(env.state.links.get("test-link").clicks, 1);
+});
+
 test("only the owning account or valid management key can view link controls", async () => {
   const ownerToken = "a".repeat(64), otherToken = "b".repeat(64), manageKey = "c".repeat(64);
   const expires = Math.floor(Date.now() / 1000) + 3600;
