@@ -198,6 +198,7 @@ test("signup commits the user and Terms acceptance together before sending verif
     assert.equal(data.verificationRequired, true);
     assert.equal(env.state.users.length, 1);
     assert.ok(env.state.users[0].passwordHash.startsWith("v2"));
+    assert.equal(env.state.acceptances.length, 1);
     assert.equal(env.state.acceptances[0].userId, env.state.users[0].id);
     assert.equal(env.state.acceptances[0].version, "2026-10-31");
     assert.ok(env.state.operations.some(operation => operation.sql.includes("INSERT INTO email_action_tokens")));
