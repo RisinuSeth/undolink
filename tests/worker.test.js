@@ -315,9 +315,10 @@ test("database cleanup applies conservative retention windows without deleting l
     emailTokens: now - 30 * day,
     clickHistory: now - 90 * day
   });
-  assert.equal(calls.length, 6);
+  assert.equal(calls.length, 7);
   assert.ok(calls.some(call => call.sql.includes("DELETE FROM link_clicks") && call.values[0] === now - 90 * day));
   assert.ok(calls.some(call => call.sql.includes("DELETE FROM sessions") && call.values[0] === now));
   assert.ok(calls.some(call => call.sql.includes("DELETE FROM email_action_tokens") && call.values.every(value => value === now - 30 * day)));
+  assert.ok(calls.some(call => call.sql.includes("DELETE FROM signup_diagnostics") && call.values[0] === now - 30 * day));
   assert.ok(calls.every(call => !/DELETE FROM (links|users|terms_acceptances)/i.test(call.sql)));
 });
