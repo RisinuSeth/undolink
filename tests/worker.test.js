@@ -405,3 +405,69 @@ test("database cleanup applies conservative retention windows without deleting l
   assert.ok(calls.some(call => call.sql.includes("DELETE FROM signup_diagnostics") && call.values[0] === now - 30 * day));
   assert.ok(calls.every(call => !/DELETE FROM (links|users|terms_acceptances)/i.test(call.sql)));
 });
+
+function createLegacyLoginEnv(user, pepper = "a".repeat(64)) {
+  const state = { user: { ...user }, sessions: [] };
+  const DB = {
+    prepare(sql) {
+      const statement = {
+        values: [],
+        bind(...values) { this.values = values; return this; },
+        async first() {
+          if (sql.includes("INSERT INTO auth_rate_limits")) return { count: 1 };
+          if (sql.includes("FROM users WHERE email=? COLLATE NOCASE")) return { ...state.user };
+          return null;
+        },
+        async run() {
+          if (sql.includes("UPDATE users SET password_hash=? WHERE id=?")) {
+            state.user.password_hash = this.values[0];
+          }
+          if (sql.includes("INSERT INTO sessions")) state.sessions.push(this.values);
+          return { meta: { changes: 1 } };
+        }
+      };
+      return statement;
+    }
+  };
+  return {
+    state, DB, PASSWORD_PEPPER: pepper,
+    ASSETS: { async fetch() { return new Response("asset not found", { status: 404 }); } }
+  };
+}
+
+function loginRequest(password) {
+  return new Request("https://undolink.test/api/auth/login", {
+    method: "POST",
+    headers: { "content-type": "application/json", "CF-Connecting-IP": "192.0.2.20" },
+    body: JSON.stringify({ email: "legacy@example.com", password })
+  });
+}
+
+test("successful legacy account login upgrades its stored hash without changing the password", async () => {
+  const salt = "0123456789abcdef0123456789abcdef";
+  const oldHash = await passwordHash("legacy-password-123", salt);
+  const env = createLegacyLoginEnv({
+    id: "legacy-user", email: "legacy@example.com", password_salt: salt,
+    password_hash: oldHash, email_verified_at: 1
+  });
+  const response = await worker.fetch(loginRequest("legacy-password-123"), env);
+  assert.equal(response.status, 200);
+  assert.match(env.state.user.password_hash, /^v2/);
+  assert.notEqual(env.state.user.password_hash, oldHash);
+  assert.equal(env.state.sessions.length, 1);
+  assert.ok(response.headers.get("set-cookie"));
+});
+
+test("incorrect legacy account password does not upgrade or replace the stored hash", async () => {
+  const salt = "0123456789abcdef0123456789abcdef";
+  const oldHash = await passwordHash("legacy-password-123", salt);
+  const env = createLegacyLoginEnv({
+    id: "legacy-user", email: "legacy@example.com", password_salt: salt,
+    password_hash: oldHash, email_verified_at: 1
+  });
+  const response = await worker.fetch(loginRequest("wrong-password"), env);
+  assert.equal(response.status, 401);
+  assert.equal(env.state.user.password_hash, oldHash);
+  assert.equal(env.state.sessions.length, 0);
+});
+
