@@ -19,7 +19,7 @@ Temporary links that stop redirecting when their time is up.
 - Only HTTP and HTTPS destinations are accepted; embedded URL credentials are rejected.
 - Basic per-IP creation rate limiting (hashed IP identifier; 30 creations per hour).
 - Browser-side guest dashboard with search, status filters, expiry sorting, summary counts and management actions.
-- Email/password accounts with secure, HttpOnly session cookies and PBKDF2-SHA-256 password hashing.
+- Email/password accounts with secure, HttpOnly session cookies and versioned PBKDF2-SHA-256 password hashes; when configured, a server-side HMAC-SHA-256 pepper adds protection against database-only leaks.
 - Email verification using single-use, expiring verification tokens.
 - Password reset emails using single-use, expiring reset tokens.
 - Account settings with password changes and active-session review/revocation.
@@ -29,13 +29,22 @@ Temporary links that stop redirecting when their time is up.
 ## Security and privacy notes
 - Management keys are generated randomly; only their SHA-256 hashes are stored in D1. The browser stores the management key locally so it can manage links. Anyone with access to that browser profile may be able to manage those links.
 - Click analytics store timestamps only. UndoLink does not currently store visitor IP addresses or user-agent strings for click analytics.
-- Link passwords are never stored in plain text. Password verification uses PBKDF2-SHA-256 with a unique random salt and 120,000 iterations. Unlock attempts are rate-limited per IP hash and link.
+- Link passwords are never stored in plain text. Password verification uses PBKDF2-SHA-256 with a unique random salt and 100,000 iterations. Unlock attempts are rate-limited per IP hash and link.
 - Expiry disables the UndoLink redirect. It does not delete, revoke or modify the original destination URL. Anyone who already knows the destination can still visit it directly.
 - Rate-limit identifiers are hashed, and old rate-limit windows are periodically cleaned up.
-- Account passwords are salted and hashed with PBKDF2-SHA-256 (210,000 iterations); sessions use random bearer tokens stored only as SHA-256 hashes and are delivered in Secure, HttpOnly, SameSite=Lax cookies.
+- Account passwords are salted and hashed with PBKDF2-SHA-256 (100,000 iterations). When PASSWORD_PEPPER is configured, hashes use a versioned HMAC-SHA-256 post-hash pepper; legacy hashes remain verifiable and are upgraded after successful authentication. Sessions use random bearer tokens stored only as SHA-256 hashes and are delivered in Secure, HttpOnly, SameSite=Lax cookies.
 - Account emails are sent through Resend. Verification links expire after 24 hours; password reset links expire after one hour. Tokens are single-use and only their SHA-256 hashes are stored.
 - Password changes require the current password and revoke other sessions. Users can review active sessions and sign out individual sessions.
 - Email verification and recovery require the Resend environment variables described below. Do not claim signup or recovery email delivery is working until a verified sender and API key are configured and tested.
+
+
+## Account password hashing
+
+For production and preview deployments, configure `PASSWORD_PEPPER` as a Cloudflare Pages secret under Settings → Variables and Secrets. Use a cryptographically random value of at least 64 characters, keep it out of Git and never share it. Keep the same value across environments and do not remove or rotate it without a planned migration: version-2 password hashes require this secret.
+
+With the secret present, new registrations, password resets and password changes store version-2 hashes using PBKDF2-HMAC-SHA-256 (100,000 iterations) followed by HMAC-SHA-256 using the server-side pepper. Existing unpeppered hashes remain compatible and are upgraded after a successful login or verification-resend password check. If the secret is absent, the Worker remains in legacy compatibility mode and continues using the original PBKDF2 hashes.
+
+The iteration count is intentionally not raised blindly: Cloudflare Workers Free has a tight per-request CPU budget. Benchmark the production runtime before increasing the work factor; the current 100,000 iterations are below OWASP's PBKDF2-HMAC-SHA-256 recommendation, so this is an additional database-compromise defense rather than a claim of full work-factor compliance.
 
 ## Database
 The D1 binding is named `DB`. The schema migrations are `0001_init.sql` (links), `0002_click_analytics.sql` (click analytics), `0003_password_protection.sql` (password-protected links), `0004_scheduling_and_pause.sql` (scheduled and paused links), `0005_accounts.sql` (users, sessions and link ownership), `0006_email_verification_and_recovery.sql` (email verification and password recovery), `0007_terms_acceptances.sql` (Terms acceptance records), and `0008_retention_indexes.sql` (indexes used by scheduled cleanup).
