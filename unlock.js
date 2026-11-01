@@ -23,11 +23,12 @@
       });
       const result = await response.json();
 
-      if (response.ok && result.ok === true &&
-          typeof result.redirectTo === "string" &&
-          /^https?:\\/\\//i.test(result.redirectTo)) {
-        window.location.assign(result.redirectTo);
-        return;
+      if (response.ok && result.ok === true && typeof result.redirectTo === "string") {
+        const target = new URL(result.redirectTo);
+        if (target.protocol === "http:" || target.protocol === "https:") {
+          window.location.assign(target.href);
+          return;
+        }
       }
 
       message.textContent = result.error || "We couldn't verify that password. Please try again.";
