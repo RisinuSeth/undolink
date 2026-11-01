@@ -88,7 +88,7 @@ test("rejects unsupported expiry durations and click limits", async () => {
 });
 
 test("rejects invalid custom slugs and reserved paths", async () => {
-  for (const customSlug of ["ab", "BadSlug", "admin", "support"]) {
+  for (const customSlug of ["ab", "bad_slug", "admin", "support"]) {
     const { response } = await postLink({
       destination: "https://example.com",
       expiresIn: 3600,
@@ -96,6 +96,18 @@ test("rejects invalid custom slugs and reserved paths", async () => {
     });
     assert.equal(response.status, 400, customSlug);
   }
+});
+
+test("normalizes custom slugs to lowercase", async () => {
+  const { response, data, env } = await postLink({
+    destination: "https://example.com",
+    expiresIn: 3600,
+    customSlug: "My-Link"
+  });
+  assert.equal(response.status, 200);
+  assert.equal(data.slug, "my-link");
+  const insert = env.operations.find(({ sql }) => sql.includes("INSERT INTO links"));
+  assert.equal(insert.values[1], "my-link");
 });
 
 test("creates a valid link and returns a private management key", async () => {
