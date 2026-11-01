@@ -273,3 +273,14 @@ test("expired login sessions cannot authorize link management", async () => {
   const response = await worker.fetch(new Request("https://undolink.test/api/links/test-link", { headers: { Cookie: `undolink_session=${sessionToken}` } }), env);
   assert.equal(response.status, 401);
 });
+
+
+test("static asset responses receive security headers", async () => {
+  const env = createEnv();
+  const response = await worker.fetch(new Request("https://undolink.test/styles.css"), env);
+  assert.equal(response.headers.get("strict-transport-security"), "max-age=31536000");
+  assert.match(response.headers.get("content-security-policy") || "", /default-src 'self'/);
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(response.headers.get("x-frame-options"), "DENY");
+  assert.equal(response.headers.get("referrer-policy"), "no-referrer");
+});
