@@ -338,7 +338,7 @@ test("password unlock page uses JSON submission with visible feedback and redire
   const landing = await worker.fetch(new Request("https://undolink.test/test-link"), env);
   const html = await landing.text();
   assert.match(html, /id="unlock-form"/);
-  assert.match(html, /src="\\/unlock.js"/);
+  assert.ok(html.includes('src="/unlock.js"'));
   assert.match(html, /id="unlock-message"/);
 
   const wrongForm = new FormData();
