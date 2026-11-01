@@ -306,14 +306,22 @@ async function auth(request, env, action) {
     const salt = token(16);
     const passwordHash = await hashAuthPassword(password, salt);
     user = { id: crypto.randomUUID(), email };
+    const createdAt = Math.floor(Date.now() / 1000);
     try {
-      await env.DB.prepare("INSERT INTO users (id,email,password_salt,password_hash,created_at,email_verified_at) VALUES (?,?,?,?,?,NULL)")
-        .bind(user.id, email, salt, passwordHash, Math.floor(Date.now() / 1000)).run();
-    } catch {
-      return json({ error: "An account with that email may already exist. Try logging in instead." }, 409);
+      // D1 batch runs these statements as one transaction: either both records
+      // are committed, or neither record is saved.
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO users (id,email,password_salt,password_hash,created_at,email_verified_at) VALUES (?,?,?,?,?,NULL)")
+          .bind(user.id, email, salt, passwordHash, createdAt),
+        env.DB.prepare("INSERT INTO terms_acceptances (id,user_id,terms_version,accepted_at) VALUES (?,?,?,?)")
+          .bind(crypto.randomUUID(), user.id, "2026-10-31", createdAt)
+      ]);
+    } catch (error) {
+      if (/UNIQUE constraint failed:\s*users\.email/i.test(String(error?.message || error))) {
+        return json({ error: "An account with that email may already exist. Try logging in instead." }, 409);
+      }
+      throw new Error("Account registration transaction failed.", { cause: error });
     }
-    await env.DB.prepare("INSERT INTO terms_acceptances (id,user_id,terms_version,accepted_at) VALUES (?,?,?,?)")
-      .bind(crypto.randomUUID(), user.id, "2026-10-31", Math.floor(Date.now() / 1000)).run();
     try {
       await issueEmailAction(env, user.id, email, "verify_email", request);
       return json({ ok: true, verificationRequired: true, message: "Check your inbox for a verification link. It expires in 24 hours." }, 201);
