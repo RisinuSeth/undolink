@@ -607,6 +607,12 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    if (request.method === "GET" && url.pathname === "/favicon.png") {
+      const data = atob("iVBORw0KGgoAAAANSUhEUgAAAGAAAABgAQMAAADYVuV7AAAABlBMVEXweDL///8jyx3gAAAA1ElEQVR42u2SwY0CMQxFX5KROFLCUAIdZLYTOiGlUEpKoAToYI4cMvl7cCYI7QohIW78k+0ffzu24YsPIGZXV9vptlVuzkY1am7OKEkF8MCOZnhgAnBAACzXZbzFjPfguSYGdpbD6bQsa5lKrMTZmApwMelSmBzzGTwsXQ1gj5SG1sEZEmtvHf7PT12NmafPPuDITS8U3UNiaIEbR7E1JljI5ropxMo434dvq4CgNBZ0wUQOCqGvVJKUwYO6WujD/DGlDMb7tgDqf3fwcCEPt/PFm/gFb01Nk496VaUAAAAASUVORK5CYII=");
+      const bytes = Uint8Array.from(data, c => c.charCodeAt(0));
+      return new Response(bytes, { headers: { ...securityHeaders, "content-type": "image/png", "cache-control": "public, max-age=31536000, immutable" } });
+    }
+
     if (url.pathname === "/support" && request.method === "GET") {
       return env.ASSETS.fetch(new Request(new URL("/support.html", request.url), {
         method: "GET",
