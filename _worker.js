@@ -618,7 +618,8 @@ async function unlock(request, env, slug) {
     // Keep the redirect available if analytics logging is temporarily unavailable.
   }
   return new Response(null, {
-    status: 302,
+    // Explicit POST-Redirect-GET after a successful password submission.
+    status: 303,
     headers: { ...securityHeaders, "location": active.destination_url, "cache-control": "no-store" }
   });
 }
