@@ -1,4 +1,4 @@
-:root{--white:#fff;--paper:#f5f5f3;--orange:#f07832;--orange-dark:#d95e1e;--ink:#252525;--muted:#777873;--line:#dadada;--soft:#efefed}
+:root{--white:#fff;--paper:#fbf8f5;--orange:#f07832;--orange-dark:#c85b20;--ink:#262321;--muted:#77716c;--line:#e7dfd8;--soft:#f3eee9}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0;background:var(--white);color:var(--ink);font-family:"DM Sans",Arial,sans-serif;-webkit-font-smoothing:antialiased}
@@ -145,7 +145,7 @@ footer span:first-child{font-weight:700;color:var(--ink);white-space:nowrap}
 
 
 /* UndoLink landing page refresh */
-:root{--orange:#f07832;--orange-dark:#d95e1e;--ink:#252525;--muted:#777873;--line:#deded9;--paper:#f5f5f3}
+
 :focus-visible{outline:2px solid var(--orange);outline-offset:3px}
 .skip-link{position:absolute;left:16px;top:-60px;z-index:50;background:var(--ink);color:#fff;padding:10px 14px;font-size:12px}
 .skip-link:focus{top:12px}
@@ -180,8 +180,8 @@ h1 span{color:var(--orange)}
 .how{display:block;padding:78px 0 82px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .section-intro{display:flex;align-items:flex-end;justify-content:space-between;gap:30px;margin-bottom:48px}
 .section-intro .eyebrow,.features-heading .eyebrow{margin-bottom:16px}
-.section-intro h2,.features-heading h2,.statement-band h2{font:700 clamp(29px,4vw,43px)/1.12 "Plus Jakarta Sans",sans-serif;letter-spacing:-.065em;margin:0}
-.section-intro h2 span,.features-heading h2 span,.statement-band h2 span{color:#888880}
+.section-intro h2,.features-heading h2{font:700 clamp(29px,4vw,43px)/1.12 "Plus Jakarta Sans",sans-serif;letter-spacing:-.065em;margin:0}
+.section-intro h2 span,.features-heading h2 span{color:#888880}
 .how-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:42px}
 .how-steps>div{padding-top:20px;border-top:1px solid #cfcfc9}
 .step-number{margin-bottom:22px;font-size:11px;letter-spacing:.08em}
@@ -198,11 +198,6 @@ h1 span{color:var(--orange)}
 .feature-icon{display:grid;place-items:center;width:39px;height:39px;margin:25px 0 19px;background:var(--paper);color:var(--orange-dark);font-size:21px}
 .feature-card h3{font:700 15px "Plus Jakarta Sans",sans-serif;letter-spacing:-.025em;margin:0 0 10px}
 .feature-card p{font-size:11px;line-height:1.75;color:var(--muted);margin:0;max-width:220px}
-.statement-band{position:relative;padding:55px 58px 58px;background:var(--paper);margin:0 0 72px}
-.statement-band .eyebrow{margin-bottom:18px}
-.statement-band h2{font-size:clamp(29px,4vw,42px)}
-.statement-link{display:inline-flex;gap:15px;align-items:center;margin-top:28px;color:var(--ink);font-size:12px;font-weight:700;text-decoration:none;border-bottom:1px solid #b8b8b1;padding-bottom:8px}
-.statement-link span{color:var(--orange)}
 .bulk-section{padding:40px 0 48px;border-top:1px solid var(--line)}
 .section-heading h2{font:700 22px "Plus Jakarta Sans",sans-serif;letter-spacing:-.05em}
 .bulk-intro{font-size:12px;line-height:1.7;max-width:560px}
@@ -254,7 +249,7 @@ h1 span{color:var(--orange)}
   .setting select{font-size:11px;padding:0 8px}
   .how{padding:54px 0}
   .section-intro{display:block;margin-bottom:30px}
-  .section-intro h2,.features-heading h2,.statement-band h2{font-size:31px}
+  .section-intro h2,.features-heading h2{font-size:31px}
   .how-steps{grid-template-columns:1fr;gap:25px}
   .how-steps>div{padding-top:15px}
   .step-number{margin-bottom:12px}
@@ -345,3 +340,25 @@ h1 span{color:var(--orange)}
 /* Keep footer branding comfortably inside the viewport on every page. */
 .site-footer{padding-left:max(24px,6vw);padding-right:max(24px,6vw)}
 @media(max-width:600px){.site-footer{padding-left:18px;padding-right:18px}}
+
+
+/* Shared UndoLink design system */
+:root{--white:#fff;--paper:#fbf8f5;--orange:#f07832;--orange-dark:#c85b20;--ink:#262321;--muted:#77716c;--line:#e7dfd8;--soft:#f3eee9}
+body{background:var(--white);color:var(--ink)}
+.topbar{border-color:var(--line)}
+.site-nav a,.top-note{color:var(--muted)}
+.workspace,.support-form,.guide-toc,.guide-related-grid a{border-color:var(--line);box-shadow:none}
+.workspace{box-shadow:0 8px 28px rgba(38,35,33,.045)}
+.field-label,.support-field span{color:var(--ink)}
+input,select,textarea{accent-color:var(--orange)}
+.url-field,.slug-input,.workspace input,.workspace select,.support-field input,.support-field textarea{border-color:#d9d0c8}
+.url-field:focus-within,.slug-input:focus-within,.workspace input:focus,.workspace select:focus,.support-field input:focus,.support-field textarea:focus{border-color:var(--orange)}
+.create-button,.guide-cta a{background:var(--orange);color:#fff}
+.create-button:hover,.guide-cta a:hover{background:var(--orange-dark)}
+.site-footer{border-color:var(--line);padding-left:max(24px,6vw);padding-right:max(24px,6vw)}
+.footer-links a{color:var(--muted)}
+.legal-page{margin-top:58px}
+.legal-page h2{color:var(--ink)}
+.legal-page p,.legal-page li{color:#5f5954}
+.legal-notice{background:var(--paper);border-left-color:var(--orange);color:#5f5954}
+@media(max-width:600px){.site-footer{padding-left:18px;padding-right:18px}.workspace{box-shadow:none}.legal-page{margin-top:40px;margin-bottom:60px;padding:0 18px}}
