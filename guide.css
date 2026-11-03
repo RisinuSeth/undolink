@@ -1,0 +1,43 @@
+:root{--guide-ink:#252525;--guide-muted:#777873;--guide-line:#dadada;--guide-soft:#efefed;--guide-orange:#f07832;--guide-paper:#f5f5f3}
+.guide-main{width:min(820px,calc(100% - 40px));margin:0 auto;padding:54px 0 72px}
+.guide-main .eyebrow{margin-bottom:16px}
+.guide-main h1{max-width:760px;font:800 clamp(40px,7vw,66px)/1.04 "Plus Jakarta Sans",sans-serif;letter-spacing:-.065em;margin:0}
+.guide-main h1 span{color:var(--guide-orange)}
+.guide-lede{max-width:690px;font-size:16px;line-height:1.8;color:#666;margin:22px 0 0}
+.guide-meta{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:24px;color:var(--guide-muted);font-size:11px}
+.guide-meta span+span:before{content:"·";margin-right:12px;color:#aaa}
+.guide-toc{margin:34px 0 48px;padding:22px 24px;border:1px solid var(--guide-line);background:#fff}
+.guide-toc strong{display:block;font:700 13px "Plus Jakarta Sans",sans-serif;margin-bottom:12px}
+.guide-toc ol{margin:0;padding-left:19px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 26px}
+.guide-toc a,.guide-main a{color:var(--guide-orange);text-underline-offset:3px}
+.guide-toc a{font-size:12px}
+.guide-article{max-width:720px}
+.guide-article section{padding:0 0 32px;margin:0 0 34px;border-bottom:1px solid var(--guide-line);scroll-margin-top:24px}
+.guide-article h2{font:700 25px/1.2 "Plus Jakarta Sans",sans-serif;letter-spacing:-.045em;margin:0 0 14px}
+.guide-article h3{font:700 15px "Plus Jakarta Sans",sans-serif;margin:24px 0 8px}
+.guide-article p,.guide-article li{font-size:14px;line-height:1.85;color:#62635f}
+.guide-article p{margin:0 0 14px}
+.guide-article ul,.guide-article ol{padding-left:22px;margin:10px 0 18px}
+.guide-article li{padding-left:4px;margin:6px 0}
+.guide-note{padding:17px 19px;margin:20px 0;background:var(--guide-paper);border-left:3px solid var(--guide-orange)}
+.guide-note p{margin:0;font-size:13px}
+.guide-example{border:1px solid var(--guide-line);padding:18px 20px;margin:18px 0}
+.guide-example strong{display:block;font:700 13px "Plus Jakarta Sans",sans-serif;margin-bottom:7px}
+.guide-example p{font-size:12px;margin:0}
+.guide-steps{counter-reset:guide-step;list-style:none!important;padding:0!important}
+.guide-steps li{counter-increment:guide-step;position:relative;padding:0 0 0 42px;margin:0 0 19px}
+.guide-steps li:before{content:counter(guide-step,decimal-leading-zero);position:absolute;left:0;top:0;color:var(--guide-orange);font:700 12px "Plus Jakarta Sans",sans-serif}
+.guide-cta{padding:26px 28px;margin:38px 0;background:var(--guide-paper);border:1px solid var(--guide-line)}
+.guide-cta h2{font:700 22px "Plus Jakarta Sans",sans-serif;margin:0 0 9px}
+.guide-cta p{font-size:13px;line-height:1.7;color:var(--guide-muted);margin:0 0 17px}
+.guide-cta a{display:inline-flex;align-items:center;gap:10px;background:var(--guide-orange);color:#fff;text-decoration:none;padding:13px 17px;font-size:12px;font-weight:700}
+.guide-related{padding-top:12px}
+.guide-related h2{font:700 19px "Plus Jakarta Sans",sans-serif;margin:0 0 15px}
+.guide-related-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.guide-related-grid a{display:block;padding:16px;border:1px solid var(--guide-line);text-decoration:none;color:var(--guide-ink);font:700 13px "Plus Jakarta Sans",sans-serif}
+.guide-related-grid a:hover{border-color:var(--guide-orange)}
+.guide-related-grid span{display:block;color:var(--guide-muted);font:400 11px/1.6 "DM Sans",sans-serif;margin-top:7px}
+.guide-breadcrumb{font-size:11px;color:var(--guide-muted);margin:0 0 25px}
+.guide-breadcrumb a{color:var(--guide-muted)}
+.guide-main .site-footer{width:100%}
+@media(max-width:600px){.guide-main{padding:40px 0 54px}.guide-lede{font-size:14px}.guide-toc{padding:18px;margin:28px 0 38px}.guide-toc ol,.guide-related-grid{grid-template-columns:1fr}.guide-article h2{font-size:22px}.guide-article p,.guide-article li{font-size:13px}.guide-cta{padding:21px}.guide-meta{gap:8px}.guide-meta span+span:before{margin-right:8px}}
