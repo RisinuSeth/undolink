@@ -262,8 +262,6 @@ h1 span{color:var(--orange)}
   .feature-icon{margin:20px 0 15px;width:34px;height:34px}
   .feature-card h3{font-size:13px}
   .feature-card p{font-size:10px}
-  .statement-band{padding:34px 23px 38px;margin-bottom:52px}
-  .statement-band h2{font-size:29px}
   .bulk-section{padding:30px 0 36px}
   .bulk-controls{grid-template-columns:1fr}
   .bulk-controls .field-label{grid-column:auto}
@@ -343,7 +341,6 @@ h1 span{color:var(--orange)}
 
 
 /* Shared UndoLink design system */
-:root{--white:#fff;--paper:#fbf8f5;--orange:#f07832;--orange-dark:#c85b20;--ink:#262321;--muted:#77716c;--line:#e7dfd8;--soft:#f3eee9}
 body{background:var(--white);color:var(--ink)}
 .topbar{border-color:var(--line)}
 .site-nav a,.top-note{color:var(--muted)}
