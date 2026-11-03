@@ -1,4 +1,4 @@
-:root{--guide-ink:#252525;--guide-muted:#777873;--guide-line:#dadada;--guide-soft:#efefed;--guide-orange:#f07832;--guide-paper:#f5f5f3}
+:root{--guide-ink:#262321;--guide-muted:#77716c;--guide-line:#e7dfd8;--guide-soft:#f3eee9;--guide-orange:#f07832;--guide-paper:#fbf8f5}
 .guide-main{width:min(820px,calc(100% - 40px));margin:0 auto;padding:54px 0 72px}
 .guide-main .eyebrow{margin-bottom:16px}
 .guide-main h1{max-width:760px;font:800 clamp(40px,7vw,66px)/1.04 "Plus Jakarta Sans",sans-serif;letter-spacing:-.065em;margin:0}
@@ -41,3 +41,13 @@
 .guide-breadcrumb a{color:var(--guide-muted)}
 .guide-main .site-footer{width:100%}
 @media(max-width:600px){.guide-main{padding:40px 0 54px}.guide-lede{font-size:14px}.guide-toc{padding:18px;margin:28px 0 38px}.guide-toc ol,.guide-related-grid{grid-template-columns:1fr}.guide-article h2{font-size:22px}.guide-article p,.guide-article li{font-size:13px}.guide-cta{padding:21px}.guide-meta{gap:8px}.guide-meta span+span:before{margin-right:8px}}
+
+
+/* Guide pages share the main app's surfaces and spacing. */
+.guide-main{padding-top:48px;padding-bottom:64px}
+.guide-toc{background:var(--guide-paper);border-color:var(--guide-line)}
+.guide-article section{border-color:var(--guide-line)}
+.guide-note,.guide-example,.guide-cta{background:var(--guide-paper);border-color:var(--guide-line)}
+.guide-related-grid a{border-color:var(--guide-line)}
+.guide-related-grid a:hover{border-color:var(--guide-orange)}
+@media(max-width:600px){.guide-main{padding-top:36px;padding-bottom:48px}}
