@@ -340,3 +340,8 @@ h1 span{color:var(--orange)}
 .bulk-content .bulk-controls .field-label{grid-column:1/-1}
 .bulk-content .bulk-controls .create-button{grid-column:1/-1;margin-top:2px}
 @media(max-width:600px){.bulk-content .bulk-controls{grid-template-columns:1fr}.bulk-content .bulk-controls .field-label{grid-column:auto}.bulk-content .bulk-controls .create-button{grid-column:auto}}
+
+
+/* Keep footer branding comfortably inside the viewport on every page. */
+.site-footer{padding-left:max(24px,6vw);padding-right:max(24px,6vw)}
+@media(max-width:600px){.site-footer{padding-left:18px;padding-right:18px}}
