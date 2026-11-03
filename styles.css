@@ -321,3 +321,22 @@ h1 span{color:var(--orange)}
   .seo-faq{gap:22px;margin-top:38px}
   .seo-faq>h2{grid-column:auto;margin-bottom:5px}
 }
+
+
+/* Compact, optional bulk creation inside the main creator */
+.workspace .bulk-section{margin-top:22px;padding:0;border:1px solid var(--line);background:#fff}
+.bulk-toggle{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 15px;cursor:pointer;list-style:none}
+.bulk-toggle::-webkit-details-marker{display:none}
+.bulk-toggle-copy{display:grid;gap:4px;min-width:0}
+.bulk-toggle-copy strong{font:700 12px "Plus Jakarta Sans",sans-serif;color:var(--ink)}
+.bulk-toggle-copy small{font-size:10px;line-height:1.5;color:var(--muted)}
+.bulk-toggle-icon{display:grid;place-items:center;width:25px;height:25px;flex:none;border:1px solid var(--line);color:var(--orange);font-size:17px;line-height:1;transition:transform .15s}
+.bulk-section[open] .bulk-toggle-icon{transform:rotate(45deg)}
+.bulk-toggle:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+.bulk-content{padding:0 15px 15px}
+.bulk-content .bulk-intro{margin:0 0 12px;font-size:11px}
+.bulk-content textarea{min-height:105px}
+.bulk-content .bulk-controls{grid-template-columns:minmax(0,1fr) 150px;gap:10px}
+.bulk-content .bulk-controls .field-label{grid-column:1/-1}
+.bulk-content .bulk-controls .create-button{grid-column:1/-1;margin-top:2px}
+@media(max-width:600px){.bulk-content .bulk-controls{grid-template-columns:1fr}.bulk-content .bulk-controls .field-label{grid-column:auto}.bulk-content .bulk-controls .create-button{grid-column:auto}}
