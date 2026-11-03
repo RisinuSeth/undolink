@@ -134,6 +134,27 @@
           <p class="manage-note">Your private management key is saved in this browser. Keep it private — it lets you disable this link.</p>
         </section>
         <p class="workspace-footnote"><span aria-hidden="true">↳︎</span> No account needed to create your first link.</p>
+        <details class="bulk-section">
+          <summary class="bulk-toggle">
+            <span class="bulk-toggle-copy"><strong>Create in bulk</strong><small>Creating several links? Make up to 10 at once.</small></span>
+            <span class="bulk-toggle-icon" aria-hidden="true">+</span>
+          </summary>
+          <div class="bulk-content">
+            <p class="bulk-intro">Paste one destination URL per line. Each link gets its own expiry and management key.</p>
+            <textarea id="bulk-urls" rows="5" placeholder="https://example.com/page-one&#10;https://example.com/page-two"></textarea>
+            <div class="bulk-controls">
+              <label class="field-label" for="bulk-expiry">Expiry for all links</label>
+              <select id="bulk-expiry">
+                <option value="3600">1 hour</option>
+                <option value="86400" selected>24 hours</option>
+                <option value="604800">7 days</option>
+              </select>
+              <button id="bulk-create" class="create-button" type="button"><span>Create links</span><span aria-hidden="true">↗︎</span></button>
+            </div>
+            <p id="bulk-message" class="form-message" role="status" aria-live="polite"></p>
+            <div id="bulk-results" class="bulk-results" hidden></div>
+          </div>
+        </details>
       </section>
     </div>
 
@@ -216,22 +237,7 @@
       <a href="#create-form" class="statement-link">Create a temporary link <span aria-hidden="true">↗︎</span></a>
     </section>
 
-    <section class="bulk-section" aria-label="Bulk link creation">
-      <div class="section-heading"><h2>Create in bulk</h2><span>Up to 10 links at once</span></div>
-      <p class="bulk-intro">Paste one destination URL per line. Each link gets its own expiry and management key.</p>
-      <textarea id="bulk-urls" rows="5" placeholder="https://example.com/page-one&#10;https://example.com/page-two"></textarea>
-      <div class="bulk-controls">
-        <label class="field-label" for="bulk-expiry">Expiry for all links</label>
-        <select id="bulk-expiry">
-          <option value="3600">1 hour</option>
-          <option value="86400" selected>24 hours</option>
-          <option value="604800">7 days</option>
-        </select>
-        <button id="bulk-create" class="create-button" type="button"><span>Create links</span><span aria-hidden="true">↗︎</span></button>
-      </div>
-      <p id="bulk-message" class="form-message" role="status" aria-live="polite"></p>
-      <div id="bulk-results" class="bulk-results" hidden></div>
-    </section>
+
 
     <section class="recent-section" id="recent-section" hidden>
       <div class="section-heading"><h2>Your links</h2><span id="dashboard-storage-label">Saved on this device</span></div>
