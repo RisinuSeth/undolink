@@ -359,3 +359,6 @@ input,select,textarea{accent-color:var(--orange)}
 .legal-page p,.legal-page li{color:#5f5954}
 .legal-notice{background:var(--paper);border-left-color:var(--orange);color:#5f5954}
 @media(max-width:600px){.site-footer{padding-left:18px;padding-right:18px}.workspace{box-shadow:none}.legal-page{margin-top:40px;margin-bottom:60px;padding:0 18px}}
+
+/* Keep the footer brand block flush-left like LiteImage. */
+.site-footer .footer-brand>p{margin-left:0}
