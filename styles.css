@@ -360,5 +360,10 @@ input,select,textarea{accent-color:var(--orange)}
 .legal-notice{background:var(--paper);border-left-color:var(--orange);color:#5f5954}
 @media(max-width:600px){.site-footer{padding-left:18px;padding-right:18px}.workspace{box-shadow:none}.legal-page{margin-top:40px;margin-bottom:60px;padding:0 18px}}
 
+
+
+/* Match ClipText: copyright uses normal body text styling, not the compact footer defaults. */
+.site-footer .footer-note>span{font-size:16px;color:var(--ink);font-weight:400}
+
 /* Keep the footer brand block flush-left like LiteImage. */
 .site-footer .footer-brand>p{margin-left:0}
