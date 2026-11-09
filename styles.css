@@ -208,7 +208,7 @@ h1 span{color:var(--orange)}
 .footer-brand>p{font-size:10px;color:var(--muted);margin:12px 0 0 0}
 .footer-note{max-width:390px;text-align:right}
 .footer-note p{font-size:10px;line-height:1.7;color:var(--muted);margin:0 0 12px}
-.footer-note>span{font-size:9px;color:#999990}
+
 .toast{z-index:30}
 @media(max-width:900px){
   .topbar{padding:0 28px}
